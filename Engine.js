@@ -21,48 +21,54 @@ class Engine {
 
     /**
      * Add a value into a unordered set
-     * @param {*} key 
+     * @param {*} setName 
      * @param {*} val 
      */
-    async setAdd(key, val){
-        //let setKey = `${this.indexPath}/${key}`;
-        //const data = await aws.get(key);
-        
-        await this.aws.uploadString('1', `${this.indexPath}/sets/${key}/${val}`);
+    async setAdd(setName, val){        
+        await this.aws.uploadString('1', `${this.indexPath}/sets/${setName}/${val}`);
     }
 
-    async setRemove(key, val){
-        await this.aws.delete(`${this.indexPath}/sets/${key}/${val}`);
+    async setRemove(setName, val){
+        await this.aws.delete(`${this.indexPath}/sets/${setName}/${val}`);
     }
 
     /**
      * Clear everything from a set
-     * @param {string} key The set name
+     * @param {string} setName The set name
      */
-    async setClear(key){
-        let items = await this.aws.list(`${this.indexPath}/sets/${key}/`);
+    async setClear(setName){
+        let items = await this.aws.list(`${this.indexPath}/sets/${setName}/`);
         if (items && items.length > 0){
             await this.aws.deleteAll(items);
         }
     }    
 
-    async setIsMember(key, val){
-        return await this.aws.exists(`${this.indexPath}/sets/${key}/${val}`);
+    async setIsMember(setName, val){
+        return await this.aws.exists(`${this.indexPath}/sets/${setName}/${val}`);
+    }
+    
+    async setMembers(setName){
+        let res = await this.aws.list(`${this.indexPath}/sets/${setName}`);
+        let list = _.map(res, (item)=>{
+            return item.Key.split('/').pop();
+        });
+        return list;
     }
 
-    // hgetall, smembers, get, zrevrangebyscore, zrangebyscore
+    // hgetall, zrevrangebyscore, zrangebyscore
 
     /**
      * Get the intersection of a number of sets
      * @param {array} keys An array of strings, with each string being the key of the set
      */
     async setIntersection(keys){
-        let items = await Promise.map(keys, async (setKey) => {            
-            let res = await this.aws.list(`${this.indexPath}/sets/${setKey}`);
-            let list = _.map(res, (item)=>{
-                return item.Key.split('/').pop();
-            });
-            return list;
+        let items = await Promise.map(keys, async (setName) => {            
+            return this.setMembers(setName);
+            //let res = await this.aws.list(`${this.indexPath}/sets/${setKey}`);
+            //let list = _.map(res, (item)=>{
+            //    return item.Key.split('/').pop();
+            //});
+            //return list;
         });        
         return _.intersection(...items);
     }
@@ -76,17 +82,11 @@ class Engine {
     }
 
     async set(key, val){
-        await this.aws.uploadString(item.slug, `${this.indexPath}/${key}`);
-
-        //if (isInDb){
-        //    await BaseModel._redisCommand('del', `${keyUnique}:${key}:${oldUniqueValue}`)
-        //}        
-        //await BaseModel._redisCommand('set', `${keyUnique}:${key}:${val}`, id)        
-
+        await this.aws.uploadString(val, `${this.indexPath}/${key}/${val}`);
     }
 
     async del(key){
-        await this.aws.delete(key);
+        await this.aws.delete(`${this.indexPath}/${key}/${val}`);
     }
 
 
