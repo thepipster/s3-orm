@@ -1,0 +1,32 @@
+{
+  "name": "s3-orm",
+  "version": "1.0.0",
+  "description": "S3 ORM",
+  "main": "index.js",
+  "author": "Mike Pritchard",
+  "license": "MIT",
+  "scripts": {
+    "test": "jest",
+    "serve": "nodemon ./src/index.js",
+    "dev": "nodemon ./src/index.js"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1074.0",
+    "bluebird": "^3.7.2",
+    "callsite": "^1.0.0",
+    "chalk": "^4.1.0",
+    "chance": "^1.1.8",
+    "dotenv-safe": "^8.2.0",
+    "lodash": "^4.17.20",
+    "mime": "^3.0.0",
+    "numeral": "^2.0.6",
+    "progress": "^2.0.3",
+    "tmp": "^0.2.1",
+    "uuidv4": "^6.2.12",
+    "winston": "^3.6.0"
+  },
+  "devDependencies": {
+    "jest": "^27.2.4",
+    "standard-version": "^9.3.1"
+  }
+}
