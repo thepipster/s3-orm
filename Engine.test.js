@@ -30,7 +30,7 @@ describe('Engine', () => {
 
         let words = [];
         for (let i=0; i<no; i+=1){
-            let tmp = chance.word();
+            let tmp = chance.sentence({ words: 5 });
             words.push(tmp);
         }
 
@@ -106,5 +106,56 @@ describe('Engine', () => {
         
         return;
     })
+
+    test('orderedSetAdd()', async () => {
+
+        const setName = 'zset-test';
+        await s3.zSetClear(setName);
+
+        const no = 8;
+        let words = [];
+        for (let i=0; i<no; i+=1){
+            let word = chance.sentence({ words: 5 }) + '___' + i;
+            words.push(word);
+            await s3.zSetAdd(setName, i, word);
+        }
+
+        // Test number of items
+        let items = await s3.zSetMembers(setName);
+        expect(items.length).toEqual(words.length);
+
+        // Test gte/lte
+        let rangeItems = await s3.zRange(setName, {gte:3, lte:6, score: true});                
+        expect(rangeItems.length).toEqual(4);
+        expect(rangeItems[0].score).toEqual(3);
+        expect(rangeItems[1].score).toEqual(4);
+        expect(rangeItems[2].score).toEqual(5);
+        expect(rangeItems[3].score).toEqual(6);
+
+        // Test gt/lte
+        rangeItems = await s3.zRange(setName, {gt:3, lte:6, score: true});        
+        expect(rangeItems.length).toEqual(3);
+        expect(rangeItems[0].score).toEqual(4);
+        expect(rangeItems[1].score).toEqual(5);
+        expect(rangeItems[2].score).toEqual(6);
+
+        // Test gt/lt
+        rangeItems = await s3.zRange(setName, {gt:3, lt:6, score: true});        
+        expect(rangeItems.length).toEqual(2);
+        expect(rangeItems[0].score).toEqual(4);
+        expect(rangeItems[1].score).toEqual(5);
+
+        // Test gte/lt
+        rangeItems = await s3.zRange(setName, {gte:3, lt:6, score: true});     
+        expect(rangeItems.length).toEqual(3);
+        expect(rangeItems[0].score).toEqual(3);
+        expect(rangeItems[1].score).toEqual(4);
+        expect(rangeItems[2].score).toEqual(5);
+
+        await s3.zSetClear(setName);
+
+
+
+    });
 
 })

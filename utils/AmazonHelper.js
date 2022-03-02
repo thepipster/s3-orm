@@ -92,6 +92,11 @@ class AmazonHelper {
 
     // ///////////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * @see https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
+     * @param {*} directoryKey 
+     * @returns 
+     */
     async list(directoryKey) {
 
         return new Promise((resolve, reject) => {     
@@ -105,7 +110,7 @@ class AmazonHelper {
                 Bucket: this.opts.bucket
             };
 
-            this.s3.listObjects(params, function(err, data) {
+            this.s3.listObjectsV2(params, function(err, data) {
                 if (err) {
                     reject(err);
                 }
