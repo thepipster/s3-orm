@@ -5,15 +5,35 @@ const AmazonHelper = require('./utils/AmazonHelper');
 const Promise = require('bluebird');
 const uuidv4 = require('uuid/v4');
 const slugify = require('slugify');
+const base64url = require('base64url');
 
 class Engine {
     
     constructor(opts){
         if (!opts){
             opts = {acl:'private'}
-        }
+        }        
         this.indexPath = process.env.AWS_INDEX_FOLDER;
         this.aws = new AmazonHelper(opts);
+    }
+
+    _encode(str){
+        return base64url(str);
+    }
+
+    _decode(hash){
+        return base64url.decode(hash);
+    }
+       
+
+	// ///////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * If your bucket is not set for public read access, you can call this to set ready 
+     * just on the folders used by this 
+     */
+    async setupReadPermissions(){
+        await this.aws.setFolderPublicRead('s3orm');
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +48,7 @@ class Engine {
         if (!val){
             return `${this.indexPath}/${prefix}/${setName}/`
         }
-        return `${this.indexPath}/${prefix}/${setName}/${encodeURIComponent(val)}`
+        return `${this.indexPath}/${prefix}/${setName}/${this._encode(val)}`
     }
 
     /**
@@ -36,9 +56,11 @@ class Engine {
      * @param {*} setName 
      * @param {*} val 
      */
-    async setAdd(setName, val){        
-        //slugify
-        await this.aws.uploadString('', this.__getPath('sets', setName, val));
+    async setAdd(setName, val){   
+        //let res = await this.aws.getObjectACL(`${this.indexPath}/sets/${setName}`);
+        //Logger.warn(res);
+        //await this.aws.setObjectACL(`${this.indexPath}/sets/${setName}`, 'public-read');    
+        await this.aws.uploadString('true', this.__getPath('sets', setName, val));
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +93,7 @@ class Engine {
     async setMembers(setName){
         let res = await this.aws.list(`${this.indexPath}/sets/${setName}`);
         let list = _.map(res, (item)=>{
-            return decodeURIComponent(item.Key.split('/').pop());
+            return this._decode(item.Key.split('/').pop());
         });
         return list;
     }
@@ -104,7 +126,7 @@ class Engine {
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
     async getObject(id){
-        let res = await this.aws.get(txt, `${this.indexPath}/hash/${id}`);
+        let res = await this.aws.get(`${this.indexPath}/hash/${id}`);
         return JSON.parse(res);
     }
 
@@ -125,11 +147,11 @@ class Engine {
         const pad = "0000000";
         const scoreStr = (pad+score).slice(-pad.length);
 
-        let key = `${this.indexPath}/zsets/${setName}/${scoreStr}###${encodeURIComponent(val)}`
+        let key = `${this.indexPath}/zsets/${setName}/${scoreStr}###${this._encode(val)}`
         await this.aws.uploadString('', key);
 
         // Also stash a index so we can find by val if we don't know the score
-        let key2 = `${this.indexPath}/zsetsind/${setName}/${encodeURIComponent(val)}`
+        let key2 = `${this.indexPath}/zsetsind/${setName}/${this._encode(val)}`
         await this.aws.uploadString(scoreStr, key2);
 
     }
@@ -139,12 +161,12 @@ class Engine {
     async zSetRemove(setName, val){
 
         // Look up key by val using the index
-        let keyIndex = `${this.indexPath}/zsetsind/${setName}/${encodeURIComponent(val)}`;
+        let keyIndex = `${this.indexPath}/zsetsind/${setName}/${this._encode(val)}`;
         let scoreStr = await this.aws.get(keyIndex);
 
         // Now we can delete both the val and the key as we know the score now
         await this.aws.delete(keyIndex);
-        await this.aws.delete(`${this.indexPath}/zsets/${setName}/${scoreStr}###${encodeURIComponent(val)}`);
+        await this.aws.delete(`${this.indexPath}/zsets/${setName}/${scoreStr}###${this._encode(val)}`);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -155,8 +177,10 @@ class Engine {
         let res = await this.aws.list(key);
 
         let list = _.map(res, (item)=>{
-            let decoded = decodeURIComponent(item.Key.split('/').pop());
-            let parts = decoded.split('###');
+
+            let key = item.Key.split('/').pop();
+            let parts = key.split('###');
+            parts[1] = this._decode(parts[1]);
 
             if (scores){
                 return {
@@ -284,6 +308,10 @@ if(require.main === module) {
 
     setTimeout(async ()=>{
 
+        let list = await s3.setMembers('fish');
+        Logger.debug(list);
+
+        /*
         const setName = 'zset-test';
         await s3.zSetClear(setName);
 
@@ -301,8 +329,8 @@ if(require.main === module) {
         let rangeItems = await s3.zRange(setName, {gte:3, lte:6});
         Logger.debug('rangeItems = ', rangeItems);
 
-
         await s3.zSetClear(setName);
+*/
 
         //let items2 = await s3.zSetMembers(setName);
         //Logger.warn(items2);

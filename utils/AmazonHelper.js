@@ -41,12 +41,12 @@ class AmazonHelper {
         if (!mergedSettings.region){
             throw new Error('No AWS region specified!')
         }
-        if (!mergedSettings.accessKeyId){
-            throw new Error('No AWS accessKeyId specified!')
-        }
-        if (!mergedSettings.secretAccessKey){
-            throw new Error('No AWS secretAccessKey specified!')
-        }
+        //if (!mergedSettings.accessKeyId){
+        //    throw new Error('No AWS accessKeyId specified!')
+        //}
+        //if (!mergedSettings.secretAccessKey){
+        //    throw new Error('No AWS secretAccessKey specified!')
+        //}
 
         //Logger.debug('AWS Bucket = ', mergedSettings.bucket)
 
@@ -93,7 +93,131 @@ class AmazonHelper {
     // ///////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @see https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
+     * @see https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#putBucketPolicy-property
+     */
+    async setFolderPublicRead(folder){
+
+        let policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "",
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": [
+                        "s3:ListBucket"
+                    ],
+                    "Resource": `arn:aws:s3:::${this.opts.bucket}`,
+                    //"Condition": {
+                    //    "StringLike": {
+                    //        "s3:prefix": `${folder}/*`
+                    //    }
+                    //}                    
+                }              
+            ]
+        };
+/*
+        let policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "",
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": [
+                        "s3:GetObject",
+                        "s3:ListBucket"
+                    ],
+                    "Resource": [
+                        `arn:aws:s3:::${this.opts.bucket}`,
+                        `arn:aws:s3:::${this.opts.bucket}/*`
+                    ],
+                    "Condition": {
+                        "StringLike": {
+                            "s3:prefix": `${folder}/*`
+                        }
+                    }                    
+                }              
+            ]
+        };
+*/
+        Logger.info(policy);
+        Logger.debug( JSON.stringify(policy));
+
+        return new Promise((resolve, reject) => {     
+
+            var params = {
+                Bucket: this.opts.bucket,
+                Policy: JSON.stringify(policy)
+            };
+
+            this.s3.putBucketPolicy(params, function(err, data) {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    resolve(data);
+                }
+            });
+
+        }) 
+
+    }
+
+    /**
+     * 
+     * @param {*} key 
+     * @param {string} acl private | public-read | public-read-write | authenticated-read | aws-exec-read | bucket-owner-read | bucket-owner-full-control
+     */
+    async setObjectACL(key, acl){
+
+        return new Promise((resolve, reject) => {     
+
+            var params = {
+                //ACL: acl,
+                Bucket: this.opts.bucket,
+                GrantRead: "uri=http://acs.amazonaws.com/groups/global/AllUsers", 
+                Key: key
+            };
+
+            this.s3.putObjectAcl(params, function(err, data) {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    resolve(data);
+                }
+            });
+
+        }) 
+    }
+
+    async getObjectACL(key){
+
+        return new Promise((resolve, reject) => {     
+
+            var params = {
+                Bucket: this.opts.bucket,
+                //GrantRead: "uri=http://acs.amazonaws.com/groups/global/AllUsers", 
+                Key: key
+            };
+
+            this.s3.getObjectAcl(params, function(err, data) {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    resolve(data);
+                }
+            });
+
+        }) 
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * @see https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#listObjectsV2-property
      * @param {*} directoryKey 
      * @returns 
      */

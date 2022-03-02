@@ -12,10 +12,13 @@
   },
   "dependencies": {
     "aws-sdk": "^2.1074.0",
+    "axios": "^0.26.0",
+    "base64url": "^3.0.1",
     "bluebird": "^3.7.2",
     "callsite": "^1.0.0",
     "chalk": "^4.1.0",
     "chance": "^1.1.8",
+    "crypto-js": "^4.1.1",
     "dotenv-safe": "^8.2.0",
     "lodash": "^4.17.20",
     "mime": "^3.0.0",
@@ -24,7 +27,8 @@
     "slugify": "^1.6.5",
     "tmp": "^0.2.1",
     "uuidv4": "^6.2.12",
-    "winston": "^3.6.0"
+    "winston": "^3.6.0",
+    "xml2js": "^0.4.23"
   },
   "devDependencies": {
     "jest": "^27.2.4",
