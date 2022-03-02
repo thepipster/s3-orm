@@ -107,7 +107,32 @@ describe('Engine', () => {
         return;
     })
 
-    test('orderedSetAdd()', async () => {
+    test('ordered set add/remove', async () => {
+
+        const setName = 'zset-test2';
+        await s3.zSetClear(setName);
+
+        // Test adding
+        let word = 'add/remove test ' + chance.sentence({ words: 5 });
+        await s3.zSetAdd(setName, 0, word);
+
+        // check it got added
+        let items = await s3.zSetMembers(setName);
+        expect(items.length).toEqual(1);
+
+        // Test removing
+        await s3.zSetRemove(setName, word);
+
+        // check it got removed
+        items = await s3.zSetMembers(setName);
+        expect(items.length).toEqual(0);
+        
+        await s3.zSetClear(setName);
+        
+
+    })
+
+    test('ordered set query', async () => {
 
         const setName = 'zset-test';
         await s3.zSetClear(setName);

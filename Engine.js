@@ -126,15 +126,33 @@ class Engine {
         const scoreStr = (pad+score).slice(-pad.length);
 
         let key = `${this.indexPath}/zsets/${setName}/${scoreStr}###${encodeURIComponent(val)}`
-        //let key = this.__getPath('zsets', setName, `${score}/${val}`);
         await this.aws.uploadString('', key);
+
+        // Also stash a index so we can find by val if we don't know the score
+        let key2 = `${this.indexPath}/zsetsind/${setName}/${encodeURIComponent(val)}`
+        await this.aws.uploadString(scoreStr, key2);
+
     }
     
     // ///////////////////////////////////////////////////////////////////////////////////////
 
+    async zSetRemove(setName, val){
+
+        // Look up key by val using the index
+        let keyIndex = `${this.indexPath}/zsetsind/${setName}/${encodeURIComponent(val)}`;
+        let scoreStr = await this.aws.get(keyIndex);
+
+        // Now we can delete both the val and the key as we know the score now
+        await this.aws.delete(keyIndex);
+        await this.aws.delete(`${this.indexPath}/zsets/${setName}/${scoreStr}###${encodeURIComponent(val)}`);
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
     async zSetMembers(setName, scores){
         
-        let res = await this.aws.list(`${this.indexPath}/zsets/${setName}`);
+        let key = `${this.indexPath}/zsets/${setName}/`;
+        let res = await this.aws.list(key);
 
         let list = _.map(res, (item)=>{
             let decoded = decodeURIComponent(item.Key.split('/').pop());
@@ -158,6 +176,11 @@ class Engine {
 
     async zSetClear(setName){
         let items = await this.aws.list(this.__getPath('zsets', setName));
+        if (items && items.length > 0){
+            await this.aws.deleteAll(items);
+        }
+        // Clear the index too
+        items = await this.aws.list(this.__getPath('zsetsind', setName));
         if (items && items.length > 0){
             await this.aws.deleteAll(items);
         }
