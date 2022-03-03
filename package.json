@@ -16,7 +16,7 @@
     "base64url": "^3.0.1",
     "bluebird": "^3.7.2",
     "callsite": "^1.0.0",
-    "chalk": "^4.1.0",
+    "chalk": "4.0.0",
     "chance": "^1.1.8",
     "crypto-js": "^4.1.1",
     "dotenv-safe": "^8.2.0",

@@ -27,13 +27,38 @@ class Engine {
        
     // ///////////////////////////////////////////////////////////////////////////////////////
 
+    async setObject(key, obj){
+        let txt = JSON.stringify(obj);
+        //let key = this.__getPath('sets', setName, val);
+        await this.aws.uploadString(txt, `${this.indexPath}/${key}`);
+    }
+
+	// ///////////////////////////////////////////////////////////////////////////////////////
+
+    async getObject(key, id){
+        let res = await this.aws.get(`${this.indexPath}/${key}`);
+        return JSON.parse(res);
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
     async get(key){
         return await this.aws.get(`${this.indexPath}/${key}`);
     }
 
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
     async set(key, val){
-        await this.aws.uploadString(val, `${this.indexPath}/${key}`);
+        try {
+            await this.aws.uploadString(val, `${this.indexPath}/${key}`);
+        }
+        catch(err){
+            Logger.error(`Tried to set ${val} to ${this.indexPath}/${key} and get error ${err.toString()}`);
+            process.exit(1);
+        }
     }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     async del(key){
         await this.aws.delete(`${this.indexPath}/${key}`);
@@ -66,14 +91,30 @@ class Engine {
 
     /**
      * Add a value into a unordered set
-     * @param {*} setName 
-     * @param {*} val 
+     * @param {string} setName 
+     * @param {string} val The value to add to the set
+     * @param {string} meta We can also add some meta data associated with this member (S3 only)
      */
-    async setAdd(setName, val){   
+    async setAdd(setName, val, meta){   
+        if (!meta){
+            meta = '';
+        }
         //let res = await this.aws.getObjectACL(`${this.indexPath}/sets/${setName}`);
         //Logger.warn(res);
         //await this.aws.setObjectACL(`${this.indexPath}/sets/${setName}`, 'public-read');    
-        await this.aws.uploadString('true', this.__getPath('sets', setName, val));
+        await this.aws.uploadString(meta, this.__getPath('sets', setName, val));
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Return any meta data associated with a set member
+     * @param {string} setName 
+     * @param {string} val 
+     * @returns 
+     */
+    async setGetMeta(setName, val){
+        return await this.aws.get(this.__getPath('sets', setName, val));
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +139,12 @@ class Engine {
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
     async setIsMember(setName, val){
-        return await this.aws.exists(this.__getPath('sets', setName, val));
+        try {
+            return await this.aws.exists(this.__getPath('sets', setName, val));
+        }
+        catch(err){
+            return false;
+        }
     }
     
 	// ///////////////////////////////////////////////////////////////////////////////////////
@@ -125,24 +171,6 @@ class Engine {
         return _.intersection(...items);
     }
     
-    // ///////////////////////////////////////////////////////////////////////////////////////
-
-    async setObject(obj){
-        if (!obj.id){
-            obj.id = uuidv4();
-        }
-        let txt = JSON.stringify(obj);
-        //let key = this.__getPath('sets', setName, val);
-        await this.aws.uploadString(txt, `${this.indexPath}/hash/${obj.id}`);
-    }
-
-	// ///////////////////////////////////////////////////////////////////////////////////////
-
-    async getObject(id){
-        let res = await this.aws.get(`${this.indexPath}/hash/${id}`);
-        return JSON.parse(res);
-    }
-
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
     // zrevrangebyscore, zrangebyscore, zrem
@@ -155,15 +183,19 @@ class Engine {
      * @param {int} score 
      * @param {string} val 
      */
-    async zSetAdd(setName, score, val){
+    async zSetAdd(setName, score, val, meta){
+
+        if (!meta){
+            meta = '';
+        }
 
         const pad = "0000000";
         const scoreStr = (pad+score).slice(-pad.length);
 
         let key = `${this.indexPath}/zsets/${setName}/${scoreStr}###${this._encode(val)}`
-        await this.aws.uploadString('', key);
+        await this.aws.uploadString(meta, key);
 
-        // Also stash a index so we can find by val if we don't know the score
+        // Also stash an index so we can find by val if we don't know the score
         let key2 = `${this.indexPath}/zsetsind/${setName}/${this._encode(val)}`
         await this.aws.uploadString(scoreStr, key2);
 
@@ -180,6 +212,34 @@ class Engine {
         // Now we can delete both the val and the key as we know the score now
         await this.aws.delete(keyIndex);
         await this.aws.delete(`${this.indexPath}/zsets/${setName}/${scoreStr}###${this._encode(val)}`);
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Get tge last item (the max) from the zset as quickly as possible
+     * @param {*} setName 
+     * @param {*} scores 
+     * @returns 
+     */
+    async zGetMax(setName, scores){
+
+        let res = await this.aws.list(`${this.indexPath}/zsets/${setName}/`);
+        let item = res.pop();
+
+        let key = item.Key.split('/').pop();
+        let parts = key.split('###');
+        parts[1] = this._decode(parts[1]);
+
+        if (scores){
+            return {
+                score: parseInt(parts[0]),
+                val: parts[1]
+            }    
+        }
+
+        return parts[1];
+
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////

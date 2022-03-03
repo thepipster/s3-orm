@@ -2,16 +2,19 @@ require('dotenv-safe').config({});
 const Logger = require("./utils/logger");
 const _ = require("lodash");
 const Promise = require("bluebird");
-const BaseModelHelper = require("./BaseModelHelper");
+const BaseModelHelper = require("./DataTypes");
 const uuidv4 = require("uuid/v4");
 const UniqueKeyViolationError = require("./errors/UniqueKeyViolationError");
-const Engine = require("./Engine.js");
-const { timeStamp } = require('console');
+const QueryError = require("./errors/QueryError");
+const Indexing = require("./Indexing.js");
+const chalk = require('Chalk');
+const DataTypes = require('./DataTypes.js');
 
 /**
  * Base Redis models, based on Nohm (https://maritz.github.io/nohm/)
  */
 class BaseModel {
+    
     /**
      * Base constructor. The model should be like;
      *
@@ -29,13 +32,13 @@ class BaseModel {
      * @param {object} prefix The prefix, e.g. 'game:'
      * @param {object} model The model
      */
-    constructor(data = {}) {
+    constructor(data) {
 
         // Grab model and prefix from the child static methods
         // NOTE: static methods are just methods on the class constructor
-        var model = this.constructor._modelExtended();
-        this.s3 = new Engine({acl:'public-read'});
-
+        var model = this.constructor._model();
+        this.s3 = this.constructor.s3;
+        
         if (model) {
             for (let key in model) {
                 var item = model[key];
@@ -62,10 +65,22 @@ class BaseModel {
             }
         }
 
-        // id is required, so create a random id if not set
-        if (!this.id) {
-            this.id = BaseModelHelper.generateToken();
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
+    toJson(){
+        
+        var model = this.constructor._model();
+        let item = {};
+
+        for (var key in model) {
+            if (key in this && typeof this[key] != "undefined") {
+                item[key] = this[key];
+            }
         }
+
+        return item;
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +99,20 @@ class BaseModel {
      * @param {string} id
      */
     static async exists(id) {
+        let key = Indexing.getIndexName();
         return await this.s3.setIsMember(`indices/${modelName}/id`, id);
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
+    static async max(fieldName){
+        const model = this._model();
+        const type = (model[fieldName].type) ? model[fieldName].type : model[fieldName];
+        const modelName = this._name();        
+        if (!type.isNumeric){
+            throw new QueryError(`${modelName}.${fieldName} is not numeric!`);
+        }
+        return await this.s3.zGetMax(`${modelName}/${fieldName}`, false);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +156,7 @@ class BaseModel {
         }
 
         var modelName = this.constructor._name();
-        var model = this.constructor._modelExtended();
+        var model = this.constructor._model();
 
         // Remove hash model
         await this.s3.del(BaseModelHelper.getKey(modelName, "hash", this.id));
@@ -190,67 +218,134 @@ class BaseModel {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async save(opts) {
+    async save() {
 
-        var modelName = this.constructor._name();
-        var model = this.constructor._modelExtended();
-        
-        var baseKey = BaseModelHelper.getKey(modelName, "hash", this.id);
-        var cmd = [baseKey];
-        var self = this;
+        const modelName = this.constructor._name();
+        const opts = this.constructor._opts();
+        const model = this.constructor._model();        
+        const indx = new Indexing(this.id, modelName, model, this.s3);
+        var data = {};        
+        var oldValues = {};
 
+        if (this.id){
+            oldValues = await this.constructor.loadFromId(this.id);
+            throw new Error(`Could load ${modelName} with id of ${this.id}`);
+        }
+        else {
+            // We need to set the id! So get the highest id in use for this model
+            let maxId = await indx.getMaxId();
+            this.id = maxId + 1;
+            await indx.setMaxId(this.id);
+        }
+    
         //Logger.debug(`Saving ${modelName} ${this.id}`)
 
-        var data = {};
+        var keys = [];
+
+        for (var key in model) {
+            if (key in this && typeof this[key] != "undefined") {
+                keys.push(key);
+            }
+        }  
 
         try {
 
-            data.id = this.id;
+            await Promise.map(keys, async (key)=>{
 
-            for (var key in model) {
-                if (key in this && typeof this[key] != "undefined") {
+                var val = this[key];
+                const definition = model[key].type ? model[key].type : model[key];
 
-                    // Check if this key is unique and already exists (if so, throw an error)
-                    if (model[key].unique) {
-                        
-                        let val = (model[key].type == "string" && this[key]) ? this[key].toLowerCase() : this[key];
-                        
-                        //let keyUnique = `${BaseModelHelper.getKey(modelName, "unique")}:${key}:${val}`;
+                //Logger.debug(`[${key}] val = ${val}`);
 
-                        let alreadyExistsId = await this.s3.setIsMember(`indices/${modelName}/${key}`, val);
+                // Check if this key is unique and already exists (if so, throw an error)
+                if (definition.unique) {
+                    
+                    let alreadyExistsId = await indx.isUnique(key, val);
 
-                        //Logger.warn(`${key} (${keyUnique}) val = ${val}, exists? ${alreadyExistsId}`)
+                    //Logger.warn(`${key} (${keyUnique}) val = ${val}, exists? ${alreadyExistsId}`)
 
-                        if (alreadyExistsId && alreadyExistsId != this.id) {
-                            throw new UniqueKeyViolationError(`${key} = ${val} is unique, and already exists`);
-                        }
+                    if (alreadyExistsId && alreadyExistsId != this.id) {
+                        throw new UniqueKeyViolationError(`${key} = ${val} is unique, and already exists`);
                     }
-
-                    if (model[key].index) {
-
-                    }
-
-                    data[key] = BaseModelHelper.writeItem(model[key], this[key]);
-
-                    /*
-                    if (typeof model[key].onUpdateOverride == "function") {
-                        data[key] = BaseModelHelper.writeItem(model[key], model[key].onUpdateOverride());
-                    } else {
-                        data[key] = BaseModelHelper.writeItem(model[key], this[key]);
-                    }
-                    */
                 }
-            }
 
-            await this._setIndices();
+                // Call the encode function of each DataType to make sure it's in a form
+                // that can be written to the DB (S3)
+                data[key] = definition.encode(val);
+                
+                //Logger.debug(`[${key}] data[key] = ${data[key]}`);
 
-            await this.s3.setObject(`${modelName}/${id}`, data);
+                /*
+                if (typeof definition.onUpdateOverride == "function") {
+                    data[key] = BaseModelHelper.writeItem(definition, definition.onUpdateOverride());
+                } else {
+                    data[key] = BaseModelHelper.writeItem(definition, val);
+                }
+                */                          
+
+            });
+
+            // Write data to S3
+            data.id = this.id;
+            Logger.debug(data);
+            Logger.debug(`Saving object ${data.id} to ${modelName}/${this.id}`);
+            await this.s3.setObject(`${modelName}/${this.id}`, data);
+
+            //
+            // Setup indexes...
+            //
+
+            Logger.debug('Setting up indexes....');
+
+        
+            await Promise.map(keys, async (key)=>{
+
+                var val = this[key];
+                var oldVal = oldValues[key];
+                const definition = model[key];
+                const isInDb = !_.isNull(oldVal); // typeof oldVal !== 'undefined'
+                const isDirty = !isInDb || (val !== oldVal);
+
+                if (isDirty){
+
+                    if (definition.unique) {
+                        if (isInDb){
+                            await indx.removeUnique(key, val);
+                        }
+                        await indx.addUnique(key, val);
+                    }
+
+                    // set new normal index
+                    if (definition.index) {
+                        
+                        if (definition.isNumeric) {
+                            // we use scored sets for things like "get all users older than 5"
+                            await this.s3.zSetAdd(key, val, id);
+                        }
+
+                        // Remove old index
+                        if (isInDb) {
+                            //if (key == 'aBoolean'){
+                            //    Logger.debug(`>>>>>>>>> Adding numeric index '${key}' to '${modelName}.${id}'; newValue: '${val}'; oldVal: '${oldVal}'.`)
+                            // }
+                            await indx.remove(key, oldVal);
+                        }
+
+                        await indx.add(key, val);
+                    }
+
+                }
+
+            });
 
             // If this item expires, add to the expires index
-            if (opts && opts.expires) {                
-                let expireTime = Math.round(Date.now() / 1000) + opts.expires;
-                await this.s3.zSetAdd(`indices/${modelName}/expire`, expireTime, this.id);
+            if (opts && opts.expires) {  
+                await indx.addExpires(opts.expires);
             }
+
+            // Finally, expire anything that needs
+            // TODO: test expires
+            //await indx.clearExpireIndices();
 
             return this;
 
@@ -260,58 +355,24 @@ class BaseModel {
                 //Logger.error('UniqueKeyViolationError error')
                 throw err;
             }
-            Logger.error(`[${modelName}] Error with save(), model = `, self, opts);
+            Logger.error(`[${modelName}] Error with save(), model = `, this.toJson(), data);
             Logger.error(err);
             return null;
         }
     }
 
-    // ///////////////////////////////////////////////////////////////////////////////////////
-
-    async _setIndices() {
-        try {
-            var oldValues = {};
-            var model = this.constructor._modelExtended();
-            var modelName = this.constructor._name();
-
-            oldValues = await this.constructor.loadFromId(this.id);
-
-            if (!oldValues) {
-                oldValues = {};
-            }
-
-            // `indices/${modelName}/id`
-
-            var keyIdset = BaseModelHelper.getKey(modelName, "idsets");
-            await this.s3.setAdd(keyIdset, this.id);
-
-            //for (var key in model){
-            await Promise.map(Object.keys(model), async (key) => {
-                return await this.constructor._setIndexForField(this.id, key, this[key], oldValues[key]);
-            });
-
-            await this._clearExpireIndices();
-
-            return;
-        } catch (e) {
-            Logger.error(`[${modelName}] Error with _setIndices()`);
-            Logger.error("this.id = ", this.id);
-            Logger.error("oldValues = ", oldValues);
-            Logger.error(e);
-        }
-    }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     static async loadFromId(id) {
         try {
-            var model = this._modelExtended();
-            var key = BaseModelHelper.getKey(this._name(), "hash", id);
-            var data = await BaseModel._redisCommand("hgetall", key);
+
+            const model = this._model();
+            const modelName = this._name();
+            const data = await this.s3.getObject(`${modelName}/${id}`);
 
             if (!data) {
-                //throw new Error(`${this.id} not found`);
-                return null;
+                throw new Error(`${modelName} with id of ${id} not found`);
             }
 
             let doc = new this();
@@ -319,18 +380,15 @@ class BaseModel {
             for (let key in model) {
                 //Logger.info(`[${key}, ${model[key].type}] ${doc[key]} : ${data[key]}`)
                 if (key in data) {
-                    doc[key] = BaseModelHelper.parseItem(model[key], data[key]);
+                    doc[key] = model[key].type.decode(data[key]);                    
                 }
             }
 
             doc.id = data.id;
 
-            // Check for expired items
-            //await doc._clearExpireIndices()
-
             return doc;
         } catch (err) {
-            Logger.error(`[${this._name()}] Error with loadFromId(), id = ${id}`, data, !data);
+            Logger.error(`[${this._name()}] Error with loadFromId(), id = ${id}`);
             Logger.error(err);
             return null;
         }
@@ -451,7 +509,7 @@ class BaseModel {
     // ///////////////////////////////////////////////////////////////////////////////////////
     
     static _createStructuredSearchOptions(query) {
-        let model = this._modelExtended();
+        let model = this._model();
 
         return Object.keys(query).map((key) => {
             const search = query[key];
@@ -462,7 +520,7 @@ class BaseModel {
                 throw new Error(`No definition for ${this._name()} ${key}`);
             }
 
-            const isNumeric = BaseModelHelper.isNumericType(definition.type);
+            const isNumeric = definition.isNumeric;
 
             const structuredSearch = {
                 key,
@@ -493,7 +551,7 @@ class BaseModel {
 
     static async _uniqueSearch(options) {
         const modelName = this._name();
-        const model = this._modelExtended();
+        const model = this._model();
         let val = BaseModelHelper.writeItem(model[search.key], search.value);
         const key = `${BaseModelHelper.getKey(modelName, "unique")}:${options.key}:${val}`;
         const id = await BaseModel._redisCommand("get", key);
@@ -508,7 +566,7 @@ class BaseModel {
 
     static async _setSearch(searches) {
         const modelName = this._name();
-        const model = this._modelExtended();
+        const model = this._model();
 
         const keys = searches.map((search) => {
             let val = BaseModelHelper.writeItem(model[search.key], search.value);
@@ -564,7 +622,7 @@ class BaseModel {
      */
     static async _singleZSetSearch(search) {
         const modelName = this._name();
-        const model = this._modelExtended();
+        const model = this._model();
         const key = `${BaseModelHelper.getKey(modelName, "scoredindex")}:${search.key}`;
         let command = "zrangebyscore";
 
@@ -632,141 +690,7 @@ class BaseModel {
      * Generate random sample data for this class
      */
     static generateMock() {
-        return BaseModelHelper.generateMock(this._modelExtended());
-    }
-
-    // ///////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Loop through the indices for this model, and reset. That is, make
-     * sure they are correct and aren't corrupt
-     */
-    static async _cleanIndices() {
-        //var prof = new Profiler()
-        //prof.start('_cleanIndices')
-        let idList = await this.getIds();
-
-        Logger.debug(`[${this._name()}._cleanIndices] found ${idList.length} items`);
-
-        if (!_.isArray(idList)) {
-            return;
-        }
-
-        // Get all the ids, then loop through each one and check it still exists. If not, remove
-        await Promise.map(
-            idList,
-            async (id) => {
-                //prof.start('_cleanIndices.check')
-                try {
-                    let exists = await this.exists(id);
-                    if (!exists) {
-                        Logger.warn(`[${this._name()}._cleanIndices] ${id} does not exist`);
-                        await this.remove(id);
-                    }
-                } catch (e) {
-                    Logger.error(e);
-                }
-                //prof.stop('_cleanIndices.check')
-                return;
-            },
-            { concurrency: 10 }
-        );
-
-        //prof.stop('_cleanIndices')
-        //prof.showResults()
-
-        return;
-    }
-
-    // ///////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Look at the expires index for any docs that need to be removed
-     */
-    async _clearExpireIndices() {
-        try {
-            let unixNow = Math.round(Date.now() / 1000);
-            let modelName = this.constructor._name();
-            let key = BaseModelHelper.getKey(modelName, "expire");
-            let expiredIds = await BaseModel._redisCommand("zrangebyscore", key, 0, unixNow);
-
-            if (!expiredIds) {
-                return;
-            }
-
-            //Logger.debug(`[${modelName}] EXPIRED IDS (${unixNow} = `, expiredIds)
-
-            return Promise.map(expiredIds, async (id) => {
-                try {
-                    return this.constructor.remove(id);
-                } catch (e) {
-                    Logger.error(e);
-                    return null;
-                }
-            });
-        } catch (e) {
-            Logger.error(`[${this._name()}] Error with _clearExpireIndices()`);
-            Logger.error(e);
-        }
-    }
-
-    // ///////////////////////////////////////////////////////////////////////////////////////
-
-    static async _setIndexForField(id, key, newVal, oldVal) {
-        
-        var model = this._modelExtended();
-
-        //if (key == 'aBoolean'){
-        //    Logger.error(_.isUndefined(oldVal))
-        //    Logger.warn(`>> [${key}] oldVal = ${oldVal}, newValue = ${newVal}: isUnique = ${isUnique}, isIndex = ${isIndex}, isInDb = ${isInDb}, isDirty = ${isDirty}`)
-        //}
-
-        // Need to convert to values that can be in Redis
-        newVal = BaseModelHelper.writeItem(model[key], newVal);
-        oldVal = BaseModelHelper.writeItem(model[key], oldVal);
-
-        var modelName = this._name();
-
-        const baseKey = `indices/${modelName}/${key}`;
-        var definition = model[key];
-
-        const isInDb = !_.isNull(oldVal); // typeof oldVal !== 'undefined'
-        const isDirty = propVal !== oldVal;
-
-
-        // free old uniques
-        if (definition.unique && isDirty) {
-            //Logger.debug(`Removing old unique '${key}' from '${modelName}.${id}'`)
-            if (isInDb) {
-                //await this.s3.del(`${keyUnique}:${key}:${oldUniqueValue}`);
-                await this.s3.setRemove(`${baseKey}/${oldVal}`, oldVal);
-                
-            }
-            await this.s3.setAdd(`${baseKey}/${newVal}`, newVal);
-        }
-
-        // set new normal index
-        if ((definition.index || definition.unique) && isDirty) {
-
-            if (BaseModelHelper.isNumericType(definition.type)) {
-                // we use scored sets for things like "get all users older than 5"
-                await this.s3.zSetAdd(key, newVal, id);
-            }
-
-            if (isInDb) {
-                //if (key == 'aBoolean'){
-                //    Logger.debug(`>>>>>>>>> Adding numeric index '${key}' to '${modelName}.${id}'; newValue: '${newVal}'; oldVal: '${oldVal}'.`)
-                // }
-                await this.s3.setRemove(`${baseKey}/${oldVal}`, id);
-            }
-
-            await this.s3.setAdd(`${baseKey}/${newVal}`, id);
-        }
-        //else {
-        //    Logger.error(`NOT adding index '${key}' to '${modelName}.${id}'; isInDb: '${isInDb}'; newValue: '${newVal}'; oldVal: '${oldVal}'.`)
-        //}
-
-        return;
+        return BaseModelHelper.generateMock(this._model());
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -775,27 +699,29 @@ class BaseModel {
      * Get the class model, but also add in system fields such as modified and created
      * if they don't already exist.
      */
-    static _modelExtended() {
+    /*
+    static _model() {
         let fields = this._model();
         if (!this._model) {
             throw new Error(`Could not find model for ${this._name()}`);
         }
         fields.created = {
-            type: "date",
+            type: DataTypes.Date,
             index: true,
             defaultValue: function () {
                 return new Date();
             },
         };
         fields.modified = {
-            type: "date",
+            type: DataTypes.Date,
             onUpdateOverride: function () {
                 return new Date();
             },
         };
+
         return fields;
     }
-
+    */
 }
 
 module.exports = BaseModel;
