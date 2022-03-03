@@ -25,7 +25,20 @@ class Engine {
         return base64url.decode(hash);
     }
        
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
+    async get(key){
+        return await this.aws.get(`${this.indexPath}/${key}`);
+    }
+
+    async set(key, val){
+        await this.aws.uploadString(val, `${this.indexPath}/${key}`);
+    }
+
+    async del(key){
+        await this.aws.delete(`${this.indexPath}/${key}`);
+    }
+    
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
     /**
@@ -262,21 +275,6 @@ class Engine {
 
         return items;
     }
-
-    // ///////////////////////////////////////////////////////////////////////////////////////
-
-    async get(key){
-        return await this.aws.get(`${this.indexPath}/${key}`);
-    }
-
-    async set(key, val){
-        await this.aws.uploadString(val, `${this.indexPath}/${key}`);
-    }
-
-    async del(key){
-        await this.aws.delete(`${this.indexPath}/${key}`);
-    }
-
 
 
 /*
