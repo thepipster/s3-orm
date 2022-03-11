@@ -1,6 +1,6 @@
 {
   "name": "s3-orm",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "S3 ORM",
   "main": "index.js",
   "author": "Mike Pritchard",
