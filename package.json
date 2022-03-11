@@ -1,5 +1,5 @@
 {
-  "name": "s3-orm",
+  "name": "storm-orm",
   "version": "1.0.0",
   "description": "S3 ORM",
   "main": "index.js",
