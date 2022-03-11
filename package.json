@@ -1,6 +1,6 @@
 {
-  "name": "storm-orm",
-  "version": "1.0.0",
+  "name": "s3-orm",
+  "version": "1.0.1",
   "description": "S3 ORM",
   "main": "index.js",
   "author": "Mike Pritchard",
@@ -24,6 +24,7 @@
     "numeral": "^2.0.6",
     "progress": "^2.0.3",
     "slugify": "^1.6.5",
+    "storm-orm": "^1.3.2",
     "tmp": "^0.2.1",
     "uuidv4": "^6.2.12",
     "winston": "^3.6.0",
