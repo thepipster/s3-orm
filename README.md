@@ -1,6 +1,4 @@
-# Storm ORM
-
-## The ORM for AWS S3!
+# The ORM for AWS S3!
 
 This is a simple object relation model (ORM) that uses S3 as it's storage engine. So why the heck would you want that? End of the day, you should probably use a database. But.... S3 is just a giant key-value store, which means this is possible. So why not?
 
@@ -18,15 +16,15 @@ More detailed docs coming soon, but you can see a simple example below;
 
 ```js
 
-const {BrowserS3Engine, AwsS3Engine, Storm, DataTypes} = require('storm-orm');
+const {ClientEngine, Engine, Storm, DataTypes} = require('s3-orm');
 
 // Create an engine to the back-end key-value store
 
 // You can use an engine for browsers, that is read only (using axios for basic http requests to S3)
-const s3 = new BrowserS3Engine(); 
+const s3 = new ClientEngine(); 
 
 // OR, for server-side you can use the AWS S3 SDK for full read/write access
-const s3 = new AwsS3Engine({acl:'public-read'});
+const s3 = new Engine({acl:'public-read'});
 
 // Create an instance of the storm ORM with this engine
 const storm = new Storm(s3);
