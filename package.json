@@ -1,15 +1,16 @@
 {
   "name": "s3-orm",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "S3 ORM",
   "main": "index.js",
   "author": "Mike Pritchard",
   "license": "MIT",
   "scripts": {
     "test": "jest",
-    "serve": "nodemon ./src/index.js",
-    "dev": "nodemon ./src/index.js"
+    "release": "standard-version"
   },
+  "repository": "https://github.com/thepipster/s3-orm",
+  "homepage": "https://github.com/thepipster/s3-orm",
   "dependencies": {
     "aws-sdk": "^2.1074.0",
     "axios": "^0.26.0",
