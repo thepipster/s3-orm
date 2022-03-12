@@ -10,7 +10,116 @@ So it's a crazy idea, but actually proved really useful - but in narrow use case
 
 ## Documentation
 
-More detailed docs coming soon, but you can see a simple example below;
+### Terminology
+
+| name | Description |
+| ---- | ----------- |
+| schema | Schema is the data definition for a model, i.e. it describes the data used by a model |
+| model | A model is a class that encapsulates the data schema, and allows you to create instances of that model |
+| document | This is an instance of a model, i.e. the underlying data decorated with the model methods |
+| field | The key of the schema, i.e. the "column" name of your documents |
+
+### Schema definition
+
+A schema object is required when defining a model. This is a basic object with key/values where the value is the field defintion. A field definition can consist simply of the field type, or be an object with a `type` key and other optional values set such as an `index`. Here is an example of such a schema;
+
+```js
+const schema =  {
+    email: {type: DataTypes.String, unique: true},
+    age: {type: DataTypes.Integer, index: true},
+    score: {type: DataTypes.Float, index: true},
+    fullName: {type: DataTypes.String, index: true},
+    lastIp: DataTypes.String,
+    lastLogin: {type: DataTypes.Date, index: true},  
+    preferences: DataTypes.Json, 
+    tags: DataTypes.Array, 
+    level: { type: DataTypes.String, default: 'user', index: true },
+    status: { type: DataTypes.String, default: 'active' }
+}
+```
+
+### Field definition
+
+A field can have the following keys
+
+| name | Description |
+| ---- | ----------- |
+| type | The field data type, such as `DataTypes.Number` |
+| index | Sets an index for a field, i.e. enables you to query on this field |
+| unique | Sets an unique for a field, i.e. enforces uniqueness for this field and enables you to query on it  |
+| default | Specify a default value for this field, this can also be a function |
+| defaultValue | Same as default |
+| onUpdateOverride | A function that is called when the document is saved, the field value is set by the output of this function during the save |
+
+#### Field types
+
+```js
+DataTypes.Id    // Integer, id field, this is automatically added to all models
+DataTypes.Uuid    // String, a uuid v4 field, will generate a uuid automically if no value set during a save
+DataTypes.Json    // Json object
+DataTypes.Float    // Float
+DataTypes.Number    // Integer
+DataTypes.Integer    // Integer
+DataTypes.String    // String
+DataTypes.Boolean    // Boolean
+DataTypes.Array    // Simple array of basic types
+DataTypes.Date    // Date
+```
+
+### Queries
+
+You can query any data type that you have an index set for. If an index is not set, all queries will throw a no-index error. A query is simply an object with key/values that correspond to the query you wish to perform. For numeric and date fields you can use the `$gt`, `$gte`, `$lte` and `$lt` operators to bound queries. If multiple keys exists, then the query will be a `and` of all the keys. An `or` operator is currently not support, but planned for the future. Example queries are;
+
+```js
+// Query for all documents where the fullName field contains a substring of 'bob'
+qry = {fullName: 'bob'};
+// Query for all documents where the fullName field contains a substring of 'ob' (so bob would match this)
+qry = {fullName: 'ob'};
+// Query for all documents where the age = 20
+qry = {age: 20};
+// Query for all documents where the age is greater than or equal to 19
+qry = {age: {$gte: 19}};
+// Query for all documents where the fullName field contains a substring of 'bob' AND the age is greater than or equal to 19
+qry = {fullName: 'bob', age: {$gte: 19}};
+// Query for all documents where the score is les than 50.56
+qry = {score: {$lt: 50.56}};
+```
+
+### Query options
+
+Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additional options, these include;
+
+| name | Default | Description |
+| ---- | ----------- |
+| offset | 0 | Skip the first n documents |
+| limit | 1000 | Limit the number of returned documents to x |
+| order | 'ASC' | The order of the returned results, can be ASC (ascending) or DESC (descending)
+
+### Model methods
+
+#### Instance methods
+
+| name | Description |
+| ---- | ----------- |
+| toJson() | Returns the document data as Json |
+| remove() | Delete this document |
+| save() | Save this document to S3 |
+
+#### Static methods
+
+| name | Description |
+| ---- | ----------- |
+| resetIndex() | Clears all the indices and attempts to rebuild them. Note this can take some time for large data sets |
+| exists(id) | Checks if a document exists with this id (this is faster than using a find) |
+| max(field) | Gets the maximum value for this field name. The field must be a numeric type |
+| count(query) | Gets a count of the number of documents for the given query |
+| distinct(field, query) | Returns an array of disctinct values for the given field. You can optionally pass a querry to restrict the set of documents looked at |
+| remove(id) | Delete a document with the given id |
+| loadFromId(id) | Load a document from the given id |
+| findOne(query, options) | Find and return a single document using the given query and options |
+| find(query, options) | Find and return an array of documents using the given query and options |
+| getIds(query, options) | Same as find, but only returns an array of id's. This is quicker than a find, so good to use if you only need the id's |
+| generateMock() | Generate random test data that matches the model schema |
 
 ## Basic usage
 
