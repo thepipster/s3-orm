@@ -12,12 +12,10 @@ So it's a crazy idea, but actually proved really useful - but in narrow use case
 
 ### Terminology
 
-| name | Description |
-| ---- | ----------- |
-| schema | Schema is the data definition for a model, i.e. it describes the data used by a model |
-| model | A model is a class that encapsulates the data schema, and allows you to create instances of that model |
-| document | This is an instance of a model, i.e. the underlying data decorated with the model methods |
-| field | The key of the schema, i.e. the "column" name of your documents |
+* **schema**: Schema is the data definition for a model, i.e. it describes the data used by a model.
+* **model**: A model is a class that encapsulates the data schema, and allows you to create instances of that model.
+* **document**: This is an instance of a model, i.e. the underlying data decorated with the model methods.
+* **field**: The key of the schema, i.e. the "column" name of your documents.
 
 ### Schema definition
 
@@ -90,7 +88,7 @@ qry = {score: {$lt: 50.56}};
 Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additional options, these include;
 
 | name | Default | Description |
-| ---- | ----------- |
+| ---- | ----------- | ---- |
 | offset | 0 | Skip the first n documents |
 | limit | 1000 | Limit the number of returned documents to x |
 | order | 'ASC' | The order of the returned results, can be ASC (ascending) or DESC (descending)
