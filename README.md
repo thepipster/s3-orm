@@ -176,5 +176,5 @@ let people = await Person.find({fullName: 'Cat'});
 
 ## Roadmap
 
-Expires index
-Indexing arrays and json object
+* Expires index
+* Indexing arrays and json object
