@@ -99,6 +99,7 @@ Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additio
 
 | name | Description |
 | ---- | ----------- |
+| constructor(data) | Create an instance of this model (document), and optionally pass in the initial data |
 | toJson() | Returns the document data as Json |
 | remove() | Delete this document |
 | save() | Save this document to S3 |
@@ -118,6 +119,17 @@ Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additio
 | find(query, options) | Find and return an array of documents using the given query and options |
 | getIds(query, options) | Same as find, but only returns an array of id's. This is quicker than a find, so good to use if you only need the id's |
 | generateMock() | Generate random test data that matches the model schema |
+
+
+### Storm methods
+
+#### Instance methods
+
+| name | Description |
+| ---- | ----------- |
+| constructor(s3) | Create a new instance of the s3 ORM ("storm"), you must pass in an instance of a S3 engine (either client or server side engine) |
+| define(name, schema, options)) | A factory method to create and register a model class |
+| listModels() | Give a list of all the models currently registered |
 
 ## Basic usage
 
@@ -177,4 +189,5 @@ let people = await Person.find({fullName: 'Cat'});
 ## Roadmap
 
 * Expires index
+* Versioning
 * Indexing arrays and json object

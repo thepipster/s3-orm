@@ -1,5 +1,3 @@
-
-
 // Names exports
 module.exports = {
     DataTypes: require("./lib/types/index.js"),
