@@ -8,6 +8,13 @@ When I started building this, it was originally designed for a simple content ma
 
 So it's a crazy idea, but actually proved really useful - but in narrow use cases.
 
+## Instalation and Usage
+
+```bash
+yarn add s3-orm
+npm install s3-orm
+```
+
 ## Documentation
 
 ### Terminology
