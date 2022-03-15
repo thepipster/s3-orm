@@ -10,7 +10,6 @@ const BooleanType = require('./lib/types/BooleanType.js');
 const StringType = require('./lib/types/StringType.js');
 
 const Model = require('./lib/core/Model.js');
-const Engine = require('./lib/engines/Engine.js');
 const ClientEngine = require('./lib/engines/ClientEngine.js');
 const Storm = require('./lib/core/Storm.js');
 
@@ -31,7 +30,6 @@ const DateTypes = {
 module.exports = {
     DateTypes,
     Model,
-    Engine,
     ClientEngine,
     Storm
 }   

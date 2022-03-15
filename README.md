@@ -193,6 +193,56 @@ let people = await Person.find({fullName: 'Cat'});
 
 ```
 
+## S3 Setup
+
+If you intend to enable public reads, then you'll need to set the bucket policy and CORS correctly. **NOTE** to enable directory listing you'll need to add both the bucket and the bucket with the trailing `/*` into the resource section.
+
+For example;
+
+
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PublicRead",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetObject",
+                "s3:GetObjectVersion"
+            ],
+            "Resource": [
+                "arn:aws:s3:::<bucketname>",
+                "arn:aws:s3:::<bucketname>/*"
+            ]
+        }
+    ]
+}
+```
+
+And for CORS;
+
+```json
+[
+    {
+        "AllowedHeaders": [
+            "*"
+        ],
+        "AllowedMethods": [
+            "GET",
+            "HEAD"
+        ],
+        "AllowedOrigins": [
+            "*"
+        ],
+        "ExposeHeaders": [],
+        "MaxAgeSeconds": 3000
+    }
+]
+```
+
 ## Roadmap
 
 * Expires index
