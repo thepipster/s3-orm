@@ -5,6 +5,7 @@
   "main": "index.js",
   "author": "Mike Pritchard",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "test": "jest",
     "release": "standard-version"
