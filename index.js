@@ -1,20 +1,19 @@
+//import ClientEngine from "./engines/ClientEngine";
+import Model from "./src/core/Model.js";
+import Storm from "./src/core/Storm.js";
+import Engine from "./src/core/Engine.js";
 
-const IdType = require('./lib/types/IdType');
-const UuidType = require('./lib/types/UuidType.js');
-const JsonType = require('./lib/types/JsonType.js');
-const ArrayType = require('./lib/types/ArrayType.js');
-const FloatType = require('./lib/types/FloatType.js');
-const IntegerType = require('./lib/types/IntegerType.js');
-const DateType = require('./lib/types/DateType.js');
-const BooleanType = require('./lib/types/BooleanType.js');
-const StringType = require('./lib/types/StringType.js');
+import IdType from './src/types/IdType.js';
+import UuidType from'./src/types/UuidType.js';
+import JsonType from'./src/types/JsonType.js';
+import ArrayType from'./src/types/ArrayType.js';
+import FloatType from'./src/types/FloatType.js';
+import IntegerType from'./src/types/IntegerType.js';
+import DateType from'./src/types/DateType.js';
+import BooleanType from'./src/types/BooleanType.js';
+import StringType from'./src/types/StringType.js';
 
-const Model = require('./lib/core/Model.js');
-const Engine = require('./lib/engines/Engine.js');
-const ClientEngine = require('./lib/engines/ClientEngine.js');
-const Storm = require('./lib/core/Storm.js');
-
-const DateTypes = {
+const DataTypes = {
     Id: IdType,
     Uuid: UuidType,
     Json: JsonType,
@@ -28,11 +27,10 @@ const DateTypes = {
 }
 
 // Names exports
-module.exports = {
-    DateTypes,
-    Model,
+export {
     Engine,
-    ClientEngine,
+    DataTypes,
+    Model,
     Storm
 }   
  
