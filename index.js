@@ -1,17 +1,17 @@
 //import ClientEngine from "./engines/ClientEngine";
-import Model from "./src/core/Model.js";
-import Storm from "./src/core/Storm.js";
-import Engine from "./src/core/Engine.js";
+import Model from "./lib/core/Model.js";
+import Storm from "./lib/core/Storm.js";
+import Engine from "./lib/core/Engine.js";
 
-import IdType from './src/types/IdType.js';
-import UuidType from'./src/types/UuidType.js';
-import JsonType from'./src/types/JsonType.js';
-import ArrayType from'./src/types/ArrayType.js';
-import FloatType from'./src/types/FloatType.js';
-import IntegerType from'./src/types/IntegerType.js';
-import DateType from'./src/types/DateType.js';
-import BooleanType from'./src/types/BooleanType.js';
-import StringType from'./src/types/StringType.js';
+import IdType from './lib/types/IdType.js';
+import UuidType from'./lib/types/UuidType.js';
+import JsonType from'./lib/types/JsonType.js';
+import ArrayType from'./lib/types/ArrayType.js';
+import FloatType from'./lib/types/FloatType.js';
+import IntegerType from'./lib/types/IntegerType.js';
+import DateType from'./lib/types/DateType.js';
+import BooleanType from'./lib/types/BooleanType.js';
+import StringType from'./lib/types/StringType.js';
 
 const DataTypes = {
     Id: IdType,

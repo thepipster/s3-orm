@@ -1,11 +1,10 @@
-import resolve from "@rollup/plugin-node-resolve";
-import commonjs from '@rollup/plugin-commonjs';
-import babel from "@rollup/plugin-babel";
+//import resolve from "@rollup/plugin-node-resolve";
+//import commonjs from '@rollup/plugin-commonjs';
+//import babel from "@rollup/plugin-babel";
 import pkg from "./package.json";
-import json from '@rollup/plugin-json';
-import sourcemaps from 'rollup-plugin-sourcemaps';
-import autoNamedExports from 'rollup-plugin-auto-named-exports';
-import builtins from 'rollup-plugin-node-builtins';
+//import json from '@rollup/plugin-json';
+//import sourcemaps from 'rollup-plugin-sourcemaps';
+//import builtins from 'rollup-plugin-node-builtins';
 // rollup-plugin-node-polyfills
 
 // List of plugins here; https://github.com/rollup/plugins
@@ -16,17 +15,21 @@ const globals = {
 	'bluebird': 'Promise'
 };
 
+// rollup main.js --file bundle.js --format umd --name "myBundle"
+
+
 export default [
 	{
 		input: "index.js",
 		output: [
 			{
 				name: "s3orm",
-				file: pkg.browser,
+				file: pkg.main,
 				format: "umd",
 				globals: globals,
 				sourcemap: true
 			},
+			/*
 			{
 				name: "s3orm",
 				file: pkg.module,
@@ -40,18 +43,18 @@ export default [
 				format: "cjs",
 				globals: globals,
 				sourcemap: true
-			}					
+			}		
+			*/			
 		],
 		plugins: [
-			resolve(),
-			commonjs(),
-			autoNamedExports(),
-			babel({
+			//resolve(),
+			//commonjs(),
+			//babel({
 				//exclude: ["node_modules/**"],
-			}),
-			json(),
-			sourcemaps(),
-			builtins()
+			//}),
+			//json(),
+			//sourcemaps(),
+			//builtins()
 		],
 	}
 ];

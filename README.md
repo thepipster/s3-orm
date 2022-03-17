@@ -134,7 +134,7 @@ Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additio
 
 | name | Description |
 | ---- | ----------- |
-| constructor(s3) | Create a new instance of the s3 ORM ("storm"), you must pass in an instance of a S3 engine (either client or server side engine) |
+| constructor(config) | Create a new instance of the s3 ORM ("storm"), passing in config options |
 | define(name, schema, options)) | A factory method to create and register a model class |
 | listModels() | Give a list of all the models currently registered |
 
@@ -142,18 +142,24 @@ Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additio
 
 ```js
 
-const {ClientEngine, Engine, Storm, DataTypes} = require('s3-orm');
+const {Storm, DataTypes} = require('s3-orm');
 
-// Create an engine to the back-end key-value store
+// You can use in a read-only way with an anonymouse user (useful for browsers)
+const config = {
+    prefix: 's3orm/',
+    bucket: 'theva-test-assets'
+};
 
-// You can use an engine for browsers, that is read only (using axios for basic http requests to S3)
-const s3 = new ClientEngine(); 
-
-// OR, for server-side you can use the AWS S3 SDK for full read/write access
-const s3 = new Engine({acl:'public-read'});
+// OR, for server-side you can use the AWS S3 credentials for full read/write access
+const config = {
+    prefix: 's3orm/',
+    bucket: process.env.AWS_BUCKET,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+};
 
 // Create an instance of the storm ORM with this engine
-const storm = new Storm(s3);
+const storm = new Storm(config);
 
 // Create a schema
 const schema =  {
