@@ -147,7 +147,7 @@ const {Storm, DataTypes} = require('s3-orm');
 // You can use in a read-only way with an anonymouse user (useful for browsers)
 const config = {
     prefix: 's3orm/',
-    bucket: 'theva-test-assets'
+    bucket: 'test-assets'
 };
 
 // OR, for server-side you can use the AWS S3 credentials for full read/write access
