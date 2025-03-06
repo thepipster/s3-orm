@@ -7,9 +7,9 @@ import {random, map} from "lodash";
 import Indexing from "./Indexing.js";
 import DataTypes from "../types";
 import Storm from "./Storm.js";
-import Engine from "../engines/Engine.js";
+import {AwsEngine} from "../engines/AwsEngine.js";
 
-const s3 = new Engine({acl:'public-read'});
+const s3 = new AwsEngine({acl:'public-read'});
 const storm = new Storm(s3);
 const chance = new Chance();
 

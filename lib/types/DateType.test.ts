@@ -2,7 +2,7 @@
 "use strict";
 
 import Logger from "../utils/Logger.js";
-import DateType from './DateType.js';
+import DateType from './DateType';
 const encodeMarker = DateType.encodedMarker;
 
 describe('DateType', () => {

@@ -2,7 +2,7 @@
 "use strict";
 
 import Logger from "../utils/Logger.js";
-import UuidType from './UuidType.js';
+import UuidType from './UuidType';
 const encodeMarker = UuidType.encodedMarker;
 const testUuid = 'c06032b7-e3b7-4278-9fe6-a83b153d1804';
 

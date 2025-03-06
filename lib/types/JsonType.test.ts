@@ -2,7 +2,7 @@
 "use strict";
 
 import Logger from "../utils/Logger.js";
-import JsonType from './JsonType.js';
+import JsonType from './JsonType';
 const encodeMarker = JsonType.encodedMarker;
 
 const testObj = {

@@ -2,7 +2,7 @@
 "use strict";
 
 import Logger from "../utils/Logger.js";
-import BooleanType from './BooleanType.js';
+import BooleanType from './BooleanType';
 const encodeMarker = BooleanType.encodedMarker;
 
 describe('BooleanType', () => {

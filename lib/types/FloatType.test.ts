@@ -2,7 +2,7 @@
 "use strict";
 
 import Logger from "../utils/Logger.js";
-import FloatType from './FloatType.js';
+import FloatType from './FloatType';
 const encodeMarker = FloatType.encodedMarker;
 
 describe('FloatType', () => {

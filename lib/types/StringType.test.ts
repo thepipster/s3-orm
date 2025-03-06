@@ -2,7 +2,7 @@
 "use strict";
 
 import Logger from "../utils/Logger.js";
-import StringType from './StringType.js';
+import StringType from './StringType';
 const encodeMarker = StringType.encodedMarker;
 
 describe('StringType', () => {

@@ -4,7 +4,7 @@
 import Logger from "../utils/Logger";
 import _ from "lodash";
 import Chance from "chance";
-import {Storm, DataTypes} from "../../index.js";
+import {Storm, DataTypes} from "../../index";
 
 const chance = new Chance();
 

@@ -3,9 +3,9 @@
 
 import Logger from "../utils/Logger";
 import Chance from "chance";
-import Storm from "./Storm.js"
-import Engine from "../engines/Engine.js"
-import ClientEngine from "../engines/ClientEngine.js";
+import Storm from "./Storm"
+import {AwsEngine} from "../engines/AwsEngine"
+import ClientEngine from "../engines/ClientEngine";
 import DataTypes from "../types";
 import {uniq, map} from "lodash";
 
@@ -13,7 +13,7 @@ const chance = new Chance();
 
 // Pass in the engine, this allows swapping out the back-end DB 
 const s3Client = new ClientEngine();
-const s3 = new Engine();
+const s3 = new AwsEngine();
 
 const storm = new Storm(s3);
 const stormClient = new Storm(s3Client);

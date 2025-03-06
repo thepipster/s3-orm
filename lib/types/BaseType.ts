@@ -1,5 +1,5 @@
 import {isNull, isUndefined} from "lodash";
-import Logger from "../utils/Logger.js";
+import Logger from "../utils/Logger.ts";
 
 export default  class BaseType {
     

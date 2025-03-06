@@ -1,7 +1,7 @@
 
 "use strict";
 
-import IdType from './IdType.js';
+import IdType from './IdType';
 const encodeMarker = IdType.encodedMarker;
 
 describe('IdType', () => {

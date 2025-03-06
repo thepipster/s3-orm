@@ -5,9 +5,13 @@ import Promise from "bluebird";
 import S3Helper from "../services/S3Helper";
 import BaseS3Engine from "./BaseS3Engine";
 
-class AwsEngine extends BaseS3Engine {
+export type AwsEngineOpts = {
+    prefix: string
+}
+
+export class AwsEngine extends BaseS3Engine {
     
-    constructor(opts){
+    constructor(opts?: AwsEngineOpts){
         super();      
         this.rootPath = (opts.prefix) ? opts.prefix : 's3orm/';
         this.aws = new S3Helper(opts);
@@ -422,4 +426,3 @@ class AwsEngine extends BaseS3Engine {
 
 }
 
-export default AwsEngine;

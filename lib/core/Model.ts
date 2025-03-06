@@ -1,13 +1,10 @@
-import Logger from "../utils/Logger.js";
+import Logger from "../utils/Logger";
 import {isUndefined, uniq, map, isEmpty, intersection, slice} from "lodash";
 import Promise from "bluebird";
 import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
 import QueryError from "../errors/QueryError";
-import Indexing from "./Indexing.js";
+import Indexing from "./Indexing";
 
-/**
- * Base Redis models, based on Nohm (https://maritz.github.io/nohm/)
- */
 class BaseModel {
     
     /**

@@ -1,14 +1,17 @@
-import BaseModel from "./Model.js";
-import DataTypes from "../types/index.js";
+import BaseModel from "./BaseModel";
+import DataTypes from "../types/index";
 import {isObject} from "lodash";
-import Engine from "./Engine";
+import {AwsEngine, type AwsEngineOpts} from "./AwsEngine";
 import Logger from "../utils/Logger";
 
 class Storm {
 
-    constructor(opts){
+    s3: AwsEngine;
+    meta: any;
+    
+    constructor(opts?: AwsEngineOpts){
         this.meta = {};
-        this.s3 = new Engine(opts);
+        this.s3 = new AwsEngine(opts);
     }
 
     async listModels(){

@@ -22,4 +22,4 @@ class IdType extends BaseType {
     }
 }
 
-export default  new IdType();
+export default new IdType();

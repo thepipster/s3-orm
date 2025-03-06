@@ -1,8 +1,8 @@
 
 "use strict";
 
-import Logger from "../utils/Logger.js";
-import ArrayType from './ArrayType.js';
+import Logger from "../utils/Logger.ts";
+import ArrayType from './ArrayType';
 const encodeMarker = ArrayType.encodedMarker;
 
 const testObj = ['tag1', 'tag2', 'tsg346',  'sdgsdgsdgds'];

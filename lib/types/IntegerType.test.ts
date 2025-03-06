@@ -2,7 +2,7 @@
 "use strict";
 
 import Logger from "../utils/Logger.js";
-import IntegerType from './IntegerType.js';
+import IntegerType from './IntegerType';
 const encodeMarker = IntegerType.encodedMarker;
 
 describe('IntegerType', () => {
