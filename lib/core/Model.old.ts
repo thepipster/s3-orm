@@ -1,24 +1,12 @@
 import Logger from "../utils/Logger";
 import {isUndefined, uniq, map, isEmpty, intersection, slice} from "lodash";
-import {Promise} from "bluebird";
+import Promise from "bluebird";
 import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
 import QueryError from "../errors/QueryError";
-import {ModelMeta} from "../decorators/Column"
 import Indexing from "./Indexing";
-import {Connection} from "./Connection";
-import chalk from "chalk";
 
-const debugMode = true;
-
-export class Model {
+class BaseModel {
     
-    id: number = 0;
-    __v: number = 1;
-        
-    //["constructor"]: typeof Model;
-
-    // ///////////////////////////////////////////////////////////////////////////////////////
-
     /**
      * Base constructor. The model should be like;
      *
@@ -36,15 +24,17 @@ export class Model {
      * @param {object} prefix The prefix, e.g. 'game:'
      * @param {object} model The model
      */
-    constructor(data?) {
+    constructor(data) {
 
         if (!data){
             data = {};
         }
 
-        // Grab model meta data to get the column definitions
-        const model = ModelMeta[this.constructor.name];
-/*        
+        // Grab model and prefix from the child static methods
+        // NOTE: static methods are just methods on the class constructor
+        const model = this.constructor._schema();
+        //this.s3 = this.constructor.s3;
+        
         if (model) {
             for (let key in model) {
 
@@ -74,7 +64,7 @@ export class Model {
                         this[key] = null;
                     }
     
-                    Logger.info(`${chalk.cyan(key)} of type ${chalk.blueBright(defn.name)} = ${chalk.green(data[key])} (${typeof data[key]})`);
+                    //Logger.info(`${chalk.cyan(key)} of type ${chalk.blueBright(defn.name)} = ${chalk.green(data[key])} (${typeof data[key]})`);
     
                 }
                 catch(err){
@@ -89,30 +79,18 @@ export class Model {
                 this.id = data.id;
             }
         }
-            */
 
-    }
-
-    // ///////////////////////////////////////////////////////////////////////////////////////
-
-    private static _name(): string{
-        return this.name;
-    }
-
-    private static _schema(): object {
-        return ModelMeta[this.name];
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     toJson(){
         
-        const keys = Object.keys(this);
+        var model = this.constructor._schema();
         let item = {};
 
-        for (let i=0; i<keys.length; i+=1){
-            let key = keys[i];
-            if (key in this && isUndefined(this[key])) { // typeof this[key] != "undefined") {
+        for (var key in model) {
+            if (key in this && typeof this[key] != "undefined") {
                 item[key] = this[key];
             }
         }
@@ -125,7 +103,7 @@ export class Model {
     static async resetIndex(){
         const modelName = this._name();
         const model = this._schema();        
-        const indx = new Indexing(null, modelName, model, Connection.s3());
+        const indx = new Indexing(null, modelName, model, this.s3);
         await indx.cleanIndices();
     }
 
@@ -137,7 +115,7 @@ export class Model {
      */
     static async exists(id) {
         const modelName = this._name();        
-        return await Connection.s3().hasObject(`${modelName}/${id}`);
+        return await this.s3.hasObject(`${modelName}/${id}`);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -149,7 +127,7 @@ export class Model {
         if (!type.isNumeric){
             throw new QueryError(`${modelName}.${fieldName} is not numeric!`);
         }
-        return await Connection.s3().zGetMax(`${modelName}/${fieldName}`, false);
+        return await this.s3.zGetMax(`${modelName}/${fieldName}`, false);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -180,9 +158,9 @@ export class Model {
             throw new Error(`Trying to remove document without an id!`);
         }
 
-        const s3 = Connection.s3();
-        const modelName = this.constructor.name;
-        const model = ModelMeta[this.constructor.name];
+        const s3 = this.constructor.s3;
+        const modelName = this.constructor._name();
+        const model = this.constructor._schema();
         const indx = new Indexing(this.id, modelName, model, s3);
 
 
@@ -222,17 +200,16 @@ export class Model {
 
     async save() {
 
-        const modelName = this.constructor.name;
-        const model = ModelMeta[this.constructor.name];        
-        const s3 = Connection.s3();
+        const modelName = this.constructor._name();
+        const opts = this.constructor._opts();
+        const model = this.constructor._schema();        
+        const s3 = this.constructor.s3;
         const indx = new Indexing(this.id, modelName, model, s3);
         var oldValues = {};
 
-        // If the id field is set (non-zero), then attempt
-        // to load the old values from the db
         if (this.id){
             try {
-                oldValues = await Model.loadFromId(this.id);
+                oldValues = await this.constructor.loadFromId(this.id);
             }
             catch(err){
                 // Logger.warn(err);
@@ -249,9 +226,7 @@ export class Model {
             await indx.setMaxId(this.id);
         }
     
-        if (debugMode){
-            Logger.debug(`Saving ${modelName} ${this.id}`)
-        }
+        //Logger.debug(`Saving ${modelName} ${this.id}`)
 
         var keys = [];
 
@@ -277,10 +252,9 @@ export class Model {
                 }
             }
 
-            if (debugMode){
-                Logger.debug(`${chalk.green(modelName)}.${chalk.yellow(key)}]data[key] = ${data[key]}`);
-            }
-        
+            
+            //Logger.debug(`${chalk.green(modelName)}.${chalk.yellow(key)}]data[key] = ${data[key]}`);
+            
             if (typeof defn.onUpdateOverride == "function") {
                 this[key] = defn.onUpdateOverride();
             }
@@ -302,8 +276,7 @@ export class Model {
         // Update the index with the id (which it needs to set the correct path for indexes!)
         indx.id = this.id;
 
-
-        Logger.debug(`[${chalk.greenBright(modelName)}] Setting up indexes for instance ${this.id}`);
+        //Logger.debug(`[${chalk.greenBright(modelName)}] Setting up indexes for instance ${this.id}`);
     
         await Promise.map(keys, async (key)=>{
             
@@ -327,15 +300,13 @@ export class Model {
 
         }, {concurrency:1});
 
-        Logger.debug(`[${chalk.greenBright(modelName)}] done setting indexes`);
-
-        // TODO: add support for expires
+        //Logger.debug(`[${chalk.greenBright(modelName)}] done setting indexes`);
 
         // If this item expires, add to the expires index
-        //if (colMeta && colMeta.expires) {  
+        if (opts && opts.expires) {  
             //Logger.debug(`[${chalk.greenBright(modelName)}] Setting expires`);
-        //    await indx.addExpires(colMeta.expires);
-        //}
+            await indx.addExpires(opts.expires);
+        }
 
         // Finally, expire anything that needs
         // TODO: test expires
@@ -353,7 +324,7 @@ export class Model {
 
             const modelName = this._name();
             const key = `${modelName}/${id}`;
-            const data = await Connection.s3().getObject(key);
+            const data = await this.s3.getObject(key);
             return new this(data);
 
         } catch (err) {
@@ -440,7 +411,7 @@ export class Model {
         
         const modelName = this._name();
         const model = this._schema();
-        const indx = new Indexing(null, modelName, model, Connection.s3());
+        const indx = new Indexing(null, modelName, model, this.s3);
         var queryParts = [];
         var results = [];
 
@@ -456,11 +427,11 @@ export class Model {
         // Deal with the special case of an empty query, which means return everything!
         if (isEmpty(query)){
 
-            const list = await Connection.s3().listObjects(modelName);
+            const list = await this.s3.listObjects(modelName);
             
             for (let i=0; i<list.length; i+=1){
                 let key = list[i];
-                let data = await Connection.s3().getObject(key);
+                let data = await this.s3.getObject(key);
                 results.push(data.id);
             }
                 
@@ -556,5 +527,8 @@ export class Model {
         return mocked;
 
     }
-    
+
+
 }
+
+export default BaseModel;

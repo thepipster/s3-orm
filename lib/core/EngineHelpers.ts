@@ -2,15 +2,13 @@
 import base64url from "base64url";
 import Logger from "../utils/Logger";
 
-class BaseS3Engine {
+export class EngineHelpers {
     
-    constructor(){
-
-    }
+    static rootPath: string = "s3orm/";
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    _encode(str){
+    static encode(str){
         if (typeof str != 'string'){
             Logger.error(`BaseS3Engine._encode() - ${str} is not a string, it is a ${typeof str}`);
             throw new Error(`${str} is not a string, it is a ${typeof str}`);
@@ -20,7 +18,7 @@ class BaseS3Engine {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    _decode(hash){
+    static decode(hash){
         if (typeof hash != 'string'){
             Logger.error(`BaseS3Engine._decode() - ${hash} is not a string, it is a ${typeof hash}`);
             throw new Error(`${hash} is not a string, it is a ${typeof hash}`);
@@ -30,11 +28,13 @@ class BaseS3Engine {
        
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
-    __getPath(prefix, setName, val){        
-        return this.__getKey(prefix, setName, val) + '/';  
+    static getPath(prefix: string, setName?: string, val?: string){        
+        return this.getKey(prefix, setName, val) + '/';  
     }
 
-    __getKey(prefix, setName, val){        
+	// ///////////////////////////////////////////////////////////////////////////////////////
+
+    static getKey(prefix: string, setName?: string, val?: string){        
 
         if (!setName){
             return `${this.rootPath}${prefix}`;
@@ -44,24 +44,25 @@ class BaseS3Engine {
             return `${this.rootPath}${prefix}/${setName}`;
         }
 
-        return `${this.rootPath}${prefix}/${setName}/${this._encode(val+'')}`;
+        return `${this.rootPath}${prefix}/${setName}/${this.encode(val+'')}`;
     }
 
-    __getKeyWithId(prefix, setName, val, id){        
+	// ///////////////////////////////////////////////////////////////////////////////////////
+
+    static getKeyWithId(prefix, setName, val, id){        
         //const pad = "0000000";
         //const idStr = (pad+id).slice(-pad.length);    
         const idStr = id+'';        
-        return `${this.rootPath}${prefix}/${setName}/${this._encode(val+'')}###${idStr}`;
+        return `${this.rootPath}${prefix}/${setName}/${this.encode(val+'')}###${idStr}`;
     }
 
-    __getKeyWithScore(prefix, setName, val, score){        
+	// ///////////////////////////////////////////////////////////////////////////////////////
+    
+    static getKeyWithScore(prefix, setName, val, score){        
         //const pad = "0000000";
         //const scoreStr = (pad+score).slice(-pad.length);            
         const scoreStr = score+'';        
-        return `${this.rootPath}${prefix}/${setName}/${scoreStr}###${this._encode(val+'')}`;    
+        return `${this.rootPath}${prefix}/${setName}/${scoreStr}###${this.encode(val+'')}`;    
     }
 
 }
-
-
-export default  BaseS3Engine;

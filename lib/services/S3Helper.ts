@@ -3,17 +3,22 @@ import {map} from "lodash";
 import AWS from 'aws-sdk';
 import Logger from "../utils/Logger";
 import AuthError from "../errors/AuthError";
+import {S3Options} from "../types";
 
 /**
  * Class to simplify working with Amazon services
  */
 class S3Helper {
 
+    opts: S3Options;
+    authenticated: boolean = false;
+    s3: AWS.S3;
+
     /**
      * 
-     * @param {*} opts {bucket,region,accessKeyId,secretAccessKey }
+     * @param {*} opts {bucket,region,baseUrl,accessKeyId,secretAccessKey }
      */
-    constructor(opts){
+    constructor(opts: S3Options){
 
         if (!opts){
             throw new Error('You must pass configuration settings!');
@@ -25,7 +30,7 @@ class S3Helper {
         }
 
         opts.region = (opts.region) ? opts.region : "us-east-1";
-        opts.baseUrl = (opts.rootUrl) ? opts.rootUrl : `https://${opts.bucket}.s3.amazonaws.com`;
+        opts.rootUrl = (opts.rootUrl) ? opts.rootUrl : `https://${opts.bucket}.s3.amazonaws.com`;
         opts.acl = (opts && opts.acl) ? opts.acl : 'private';
         
         this.opts = opts;
@@ -56,7 +61,7 @@ class S3Helper {
     getRegion(){ return this.opts.region }
     getUrl(key){ 
         key = key.replace(/^\//, '');
-        return `${this.opts.baseUrl}/${key}` 
+        return `${this.opts.rootUrl}/${key}` 
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////////
@@ -243,7 +248,7 @@ class S3Helper {
      * @params {function} onDone Callback for when the file has been uploaded
      * @params {function} onProgress Callback called when there is a progress update
      */
-    async uploadString(content, key, contentType) {
+    async uploadString(content: string, key: string, contentType?: string) {
 
         if (!this.authenticated){
             throw new AuthError(`You need to be authenticated to call uploadString!`);

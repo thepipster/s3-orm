@@ -1,28 +1,29 @@
 
 import Logger from "../utils/Logger";
 import {reverse, isUndefined, map, isEmpty, intersection, slice} from "lodash";
-import Promise from "bluebird";
+import {Promise} from "bluebird";
 import S3Helper from "../services/S3Helper";
-import BaseS3Engine from "./BaseS3Engine";
+import {EngineHelpers} from "./EngineHelpers";
+import {S3Options} from "../types";
 
-export type AwsEngineOpts = {
-    prefix: string
-}
-
-export class AwsEngine extends BaseS3Engine {
+export class AwsEngine {
     
-    constructor(opts?: AwsEngineOpts){
-        super();      
-        this.rootPath = (opts.prefix) ? opts.prefix : 's3orm/';
+    //rootPath: string = 's3orm/';
+    aws: S3Helper;
+
+	// ///////////////////////////////////////////////////////////////////////////////////////
+
+    constructor(opts?: S3Options){
+        //this.rootPath = (opts.prefix) ? opts.prefix : 's3orm/';
+        EngineHelpers.rootPath = (opts.prefix) ? opts.prefix : 's3orm/';
         this.aws = new S3Helper(opts);
-        this.url = this.aws.rootUrl;        
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
-    async getObjecTypes(){
-        let res = await this.aws.list(this.__getKey('hash'));
-        Logger.debug('Listing from ', this.__getKey('hash'));
+    async getObjectTypes(path: string){
+        let res = await this.aws.list(EngineHelpers.getKey('hash'));
+        Logger.debug('Listing from ', EngineHelpers.getKey('hash'));
         Logger.debug(res);
         return await Promise.map(res, async (item)=>{
             return `${path}/${item.Key.split('/').pop()}`;
@@ -33,27 +34,27 @@ export class AwsEngine extends BaseS3Engine {
 
     async setObject(key, obj){
         let txt = JSON.stringify(obj);
-        //let key = this.__getKey('sets', setName, val);
-        await this.aws.uploadString(txt, this.__getKey('hash', key));
+        //let key = EngineHelpers.getKey('sets', setName, val);
+        await this.aws.uploadString(txt, EngineHelpers.getKey('hash', key));
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
     async getObject(key){
-        let res = await this.aws.get(this.__getKey('hash', key));
+        let res = await this.aws.get(EngineHelpers.getKey('hash', key));
         return JSON.parse(res);
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
     async delObject(key){
-         await this.aws.delete(this.__getKey('hash', key));
+         await this.aws.delete(EngineHelpers.getKey('hash', key));
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
     async hasObject(key){
-        return await this.aws.exists(this.__getKey('hash', key));
+        return await this.aws.exists(EngineHelpers.getKey('hash', key));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +66,7 @@ export class AwsEngine extends BaseS3Engine {
      * @returns 
      */
     async listObjects(path){
-        let key = this.__getPath('hash', path);
+        let key = EngineHelpers.getPath('hash', path);
         let res = await this.aws.list(key);
         return await Promise.map(res, async (item)=>{
             return `${path}/${item.Key.split('/').pop()}`;
@@ -76,19 +77,19 @@ export class AwsEngine extends BaseS3Engine {
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
     async exists(key){
-        return await this.aws.exists(this.__getKey('keyval', key));
+        return await this.aws.exists(EngineHelpers.getKey('keyval', key));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async get(key){
-        return await this.aws.get(this.__getKey('keyval', key));
+        return await this.aws.get(EngineHelpers.getKey('keyval', key));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async list(path, opts){
-        let res = await this.aws.list(this.__getPath('keyval', path));
+        let res = await this.aws.list(EngineHelpers.getPath('keyval', path));
         return map(res, (item)=>{
             if (opts && opts.fullPath){
                 return item.Key;
@@ -101,10 +102,10 @@ export class AwsEngine extends BaseS3Engine {
 
     async set(key, val){
         try {
-            await this.aws.uploadString(val, this.__getKey('keyval', key));
+            await this.aws.uploadString(val, EngineHelpers.getKey('keyval', key));
         }
         catch(err){
-            Logger.error(`Tried to set ${val} to ${this.rootPath}${key} and get error ${err.toString()}`);
+            Logger.error(`Tried to set ${val} to ${key} and get error ${err.toString()}`);
             process.exit(1);
         }
     }
@@ -112,7 +113,7 @@ export class AwsEngine extends BaseS3Engine {
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async del(key){
-        await this.aws.delete(this.__getKey('keyval', key));
+        await this.aws.delete(EngineHelpers.getKey('keyval', key));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +125,7 @@ export class AwsEngine extends BaseS3Engine {
         }
 
         let list = map(keys, (key)=>{
-            return {Key: this.__getKey('keyval', key)}
+            return {Key: EngineHelpers.getKey('keyval', key)}
         });
 
         //Logger.debug('delBatch', list);
@@ -158,7 +159,7 @@ export class AwsEngine extends BaseS3Engine {
         //let res = await this.aws.getObjectACL(`${this.rootPath}sets/${setName}`);
         //Logger.warn(res);
         //await this.aws.setObjectACL(`${this.rootPath}sets/${setName}`, 'public-read');    
-        await this.aws.uploadString(meta, this.__getKey('sets', setName, val));
+        await this.aws.uploadString(meta, EngineHelpers.getKey('sets', setName, val));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -170,13 +171,13 @@ export class AwsEngine extends BaseS3Engine {
      * @returns 
      */
     async setGetMeta(setName, val){
-        return await this.aws.get(this.__getKey('sets', setName, val));
+        return await this.aws.get(EngineHelpers.getKey('sets', setName, val));
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
     async setRemove(setName, val){
-        await this.aws.delete(this.__getKey('sets', setName, val));
+        await this.aws.delete(EngineHelpers.getKey('sets', setName, val));
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
@@ -186,7 +187,7 @@ export class AwsEngine extends BaseS3Engine {
      * @param {string} setName The set name
      */
     async setClear(setName){
-        let items = await this.aws.list(this.__getPath('sets', setName));
+        let items = await this.aws.list(EngineHelpers.getPath('sets', setName));
         if (items && items.length > 0){
             await this.aws.deleteAll(items);
         }
@@ -196,7 +197,7 @@ export class AwsEngine extends BaseS3Engine {
 
     async setIsMember(setName, val){
         try {
-            const key = this.__getKey('sets', setName, val);
+            const key = EngineHelpers.getKey('sets', setName, val);
             return await this.aws.exists(key);
         }
         catch(err){
@@ -207,9 +208,9 @@ export class AwsEngine extends BaseS3Engine {
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
     async setMembers(setName){        
-        let res = await this.aws.list(this.__getPath('sets', setName));
+        let res = await this.aws.list(EngineHelpers.getPath('sets', setName));
         let list = map(res, (item)=>{
-            return this._decode(item.Key.split('/').pop());
+            return EngineHelpers.decode(item.Key.split('/').pop());
         });
         return list;
     }
@@ -248,7 +249,7 @@ export class AwsEngine extends BaseS3Engine {
         else if (!meta && meta != 0){
             meta = '';
         }
-        let key = this.__getKeyWithScore('zsets', setName, val, score);
+        let key = EngineHelpers.getKeyWithScore('zsets', setName, val, score);
         await this.aws.uploadString(meta, key);
 
     }
@@ -256,7 +257,7 @@ export class AwsEngine extends BaseS3Engine {
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async zSetRemove(setName, score, val){
-        let key = this.__getKeyWithScore('zsets', setName, val, score);
+        let key = EngineHelpers.getKeyWithScore('zsets', setName, val, score);
         await this.aws.delete(key);
     }
 
@@ -270,14 +271,14 @@ export class AwsEngine extends BaseS3Engine {
      */
     async zGetMax(setName, scores){
 
-        let key = this.__getKey('zsets', setName)+'/';
+        let key = EngineHelpers.getKey('zsets', setName)+'/';
         let res = await this.aws.list(key);
         
         let item = res.pop();
 
         key = item.Key.split('/').pop();
         let parts = key.split('###');
-        parts[1] = this._decode(parts[1]);
+        parts[1] = EngineHelpers.decode(parts[1]);
 
         if (scores){
             return {
@@ -294,7 +295,7 @@ export class AwsEngine extends BaseS3Engine {
 
     async zSetMembers(setName, scores){
         
-        let key = this.__getPath('zsets', setName);
+        let key = EngineHelpers.getPath('zsets', setName);
         //let key = `${this.rootPath}zsets/${setName}/`;
         let res = await this.aws.list(key);
 
@@ -302,7 +303,7 @@ export class AwsEngine extends BaseS3Engine {
 
             key = item.Key.split('/').pop();
             let parts = key.split('###');
-            parts[1] = this._decode(parts[1]);
+            parts[1] = EngineHelpers.decode(parts[1]);
 
             if (scores){
                 return {
@@ -322,12 +323,12 @@ export class AwsEngine extends BaseS3Engine {
 
     async zSetClear(setName){
 
-        let items = await this.aws.list(this.__getPath('zsets', setName));
+        let items = await this.aws.list(EngineHelpers.getPath('zsets', setName));
         if (items && items.length > 0){
             await this.aws.deleteAll(items);
         }
 
-        items = await this.aws.list(`${this.__getKey('zsets', setName)}/expires/`);        
+        items = await this.aws.list(`${EngineHelpers.getKey('zsets', setName)}/expires/`);        
         if (items && items.length > 0){
             await this.aws.deleteAll(items);
         }

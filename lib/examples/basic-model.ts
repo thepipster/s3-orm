@@ -1,23 +1,39 @@
-
-"use strict";
-
 import Logger from "../utils/Logger";
 import _ from "lodash";
 import Chance from "chance";
-import {Storm, DataTypes} from "../../index";
+import {Column, Entity, Model} from "../index";
 
-const chance = new Chance();
+//import { BaseEntity, Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+
+///const chance = new Chance();
 
 // uuid: { type: DataTypes.String, default: uuidv4}, 
 
 // Pass in the engine, this allows swapping out the back-end DB 
-const storm = new Storm();
+//const storm = new Storm();
 
 setTimeout( async ()=> {
 
 
-    const models = await storm.listModels();
-    Logger.debug(`Models = `, models);
+    //const models = await storm.listModels();
+    //Logger.debug(`Models = `, models);
+
+    @Entity({expires: 100})
+    class Person extends Model {
+
+        //@PrimaryGeneratedColumn()
+        //id: number;
+
+        @Column({index: true})
+        email: string;
+
+        @Column({type: 'integer', index: true})
+        age: number;
+
+        @Column({type: 'float', index: true})
+        score: number;
+
+    }
 /*
     const Model = storm.define('basic-model', {
         email: {type: DataTypes.String, index: true},

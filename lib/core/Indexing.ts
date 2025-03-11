@@ -9,10 +9,17 @@ import {
     uniq
 } from "lodash";
 
-import Promise from "bluebird";
+import {Promise} from "bluebird";
 import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
+import { AwsEngine } from "./AwsEngine";
 
 class Indexing {
+
+    id: string = "";
+    schema: any = {};
+    fields: string[] = [];
+    modelName: string = "";
+    s3: AwsEngine;
 
     constructor(id, modelName, schema, s3Engine){
         this.id = id;
@@ -549,7 +556,7 @@ class Indexing {
      * Add a expire index, that will expire the entire model instance
      * @param {integer} expireTime Seconds in the future that this will expire
      */
-     async addExpires(expireTime){
+     async addExpires(expireTime: number){
         let expires = Math.round(Date.now() / 1000) + expireTime;
         await this.s3.zSetAdd(`${this.modelName}/expires`, expires+'', this.id+'', this.id+'');
     }
