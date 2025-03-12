@@ -4,9 +4,10 @@
  */
  class QueryError extends Error {
     
+    code: number = 401;
+
     constructor(...args) {
         super(...args)
-        this.code = 401
         Error.captureStackTrace(this, QueryError)
     }
 }

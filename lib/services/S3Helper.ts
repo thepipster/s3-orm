@@ -1,18 +1,44 @@
-"use strict";
 import {map} from "lodash";
-import AWS from 'aws-sdk';
+import { 
+    S3Client, 
+    ListObjectsV2Command,
+    ListObjectsV2CommandOutput, 
+    HeadObjectCommand,
+    GetObjectCommand,
+    GetObjectAclCommand,
+    PutObjectAclCommand,
+    PutObjectCommand,
+    DeleteObjectCommand,
+    DeleteObjectsCommand,
+    _Object as S3Object,
+    GetObjectCommandOutput,
+    ObjectIdentifier,
+    ObjectCannedACL
+} from "@aws-sdk/client-s3";
+import { Readable } from 'stream';
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import Logger from "../utils/Logger";
 import AuthError from "../errors/AuthError";
-import {S3Options} from "../types";
+
+export type S3Options = {
+    bucket: string;
+    prefix: string;
+    region?: string;
+    rootUrl?: string;
+    acl?: ObjectCannedACL;
+    accessKeyId: string;
+    secretAccessKey: string;
+}
 
 /**
+ * https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/s3/
  * Class to simplify working with Amazon services
  */
-class S3Helper {
+export class S3Helper {
 
     opts: S3Options;
     authenticated: boolean = false;
-    s3: AWS.S3;
+    s3: S3Client;
 
     /**
      * 
@@ -31,315 +57,208 @@ class S3Helper {
 
         opts.region = (opts.region) ? opts.region : "us-east-1";
         opts.rootUrl = (opts.rootUrl) ? opts.rootUrl : `https://${opts.bucket}.s3.amazonaws.com`;
-        opts.acl = (opts && opts.acl) ? opts.acl : 'private';
+        opts.acl = (opts && opts.acl) ? opts.acl as ObjectCannedACL : 'private';
         
         this.opts = opts;
         this.authenticated = false;
 
+        const clientConfig: any = {
+            region: opts.region
+        };
+
         // If we have the credentials, try to authenticate
         if (opts.accessKeyId && opts.secretAccessKey){
-            // init aws
-            try {
-                //console.log('AWS opts = ', this.opts)
-                AWS.config.update(this.opts);
-                this.authenticated = true;
-            }
-            catch(err){
-                console.error(err);
-                this.authenticated = false;
-            }
-
+            clientConfig.credentials = {
+                accessKeyId: opts.accessKeyId,
+                secretAccessKey: opts.secretAccessKey
+            };
+            this.authenticated = true;
         }
 
-        this.s3 = new AWS.S3({})
-
+        this.s3 = new S3Client(clientConfig);
     }
 
-    // ///////////////////////////////////////////////////////////////////////////////////////////
+    getBucket(): string { return this.opts.bucket }
+    
+    getRegion(): string { return this.opts.region }
 
-    getBucket(){ return this.opts.bucket }
-    getRegion(){ return this.opts.region }
-    getUrl(key){ 
+    getUrl(key: string): string { 
         key = key.replace(/^\//, '');
         return `${this.opts.rootUrl}/${key}` 
     }
 
-    // ///////////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Anonymous
-    //
-    // ///////////////////////////////////////////////////////////////////////////////////////////
-
-    _read(cmd, params){
-
-        return new Promise((resolve, reject) => {     
-
-            if (this.authenticated){
-                this.s3[cmd](params, function(err, data) {
-                    if (err) {
-                        resolve(err);
-                    }
-                    else {
-                        resolve(data);
-                    }
-                });
-            }  
-            else {
-                this.s3.makeUnauthenticatedRequest(cmd, params, function(err, data) {
-                    if (err) {
-                        resolve(err);
-                    }
-                    else {
-                        resolve(data);
-                    }
-                });
-            }
-
-        })   
-
+    async _read(command: any): Promise<any> {
+        try {
+            const response = await this.s3.send(command);
+            return response;
+        } catch (err) {
+            Logger.error('S3 read error:', err);
+            throw err;
+        }
     }
 
-    _write(cmd, params){
+    async _write(command: any): Promise<any> {
+        if (!this.authenticated){
+            throw new AuthError(`You need to be authenticated for this operation`);
+        }  
 
-        return new Promise((resolve, reject) => {     
-
-            if (!this.authenticated){
-                throw new AuthError(`You need to be authenticated to call ${cmd}`);
-            }  
-
-            this.s3[cmd](params, function(err, data) {
-                if (err) {
-                    resolve(err);
-                }
-                else {
-                    resolve(data);
-                }
-            });
-
-        })   
-
+        try {
+            const response = await this.s3.send(command);
+            return response;
+        } catch (err) {
+            Logger.error('S3 write error:', err);
+            throw err;
+        }
     }
-
-    // ///////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * @see https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#listObjectsV2-property
-     * @param {*} directoryKey 
-     * @returns 
+     * @see https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/s3/command/ListObjectsV2Command/
      */
-     async list(directoryKey) {
-
-        const params = {
+    async list(directoryKey: string): Promise<S3Object[]> {
+        const command = new ListObjectsV2Command({
             Delimiter: '/',
-            //EncodingType: 'url',
-            //Marker: 'STRING_VALUE',
-            //MaxKeys: 0,
             Prefix: directoryKey,
             Bucket: this.opts.bucket
-        };
+        });
 
-        let data = await this._read('listObjectsV2', params);
-        return data.Contents;
- 
+        const response = await this._read(command) as ListObjectsV2CommandOutput;
+        return response.Contents || [];
     }
-
-    // ///////////////////////////////////////////////////////////////////////////////////////////
 
     /**
     * Check that a file exists
-    * @see http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#headObject-property
     */
-    async exists(key){
-
-        const params = {
-            Key: key,
-            Bucket: this.opts.bucket
-        };
+    async exists(key: string): Promise<boolean> {
+        const command = new HeadObjectCommand({
+            Bucket: this.opts.bucket,
+            Key: key
+        });
 
         try {
-            await this._read('headObject', params);
+            await this._read(command);
             return true;
-        }
-        catch(err){
+        } catch(err) {
             return false;
         }
- 
     }
-
-    // ///////////////////////////////////////////////////////////////////////////////////////////
 
     /**
     * Get a file
-    * https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#getObject-property
     */
-    async get(key) {
-        Logger.debug('get = ', key);
-        let data = await this._read('getObject', { Bucket: this.opts.bucket, Key: key });
-        Logger.debug('data = ', data);
-        return data.Body.toString('utf-8');
-    }
+    async get(key: string): Promise<string> {
 
-    // ///////////////////////////////////////////////////////////////////////////////////////////
-
-    async getObjectACL(key){
-
-        const params = {
+        const command = new GetObjectCommand({
             Bucket: this.opts.bucket,
-            //GrantRead: "uri=http://acs.amazonaws.com/groups/global/AllUsers", 
             Key: key
+        });
+
+        const response = await this._read(command) as GetObjectCommandOutput;
+        const streamToString = async (stream: Readable): Promise<string> => {
+            return new Promise((resolve, reject) => {
+                const chunks: Buffer[] = [];
+                stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+                stream.on("error", reject);
+                stream.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+            });
         };
 
-        let data = await this._read('getObjectACL', params);
-        return data.Contents;
+        if (response.Body instanceof Readable) {
+            return await streamToString(response.Body);
+        }
+        throw new Error('Invalid response body type');
     }
-    
-    // ///////////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Authenticated
-    //
-    // ///////////////////////////////////////////////////////////////////////////////////////////
+
+    async getObjectACL(key: string): Promise<any> {
+        const command = new GetObjectAclCommand({
+            Bucket: this.opts.bucket,
+            Key: key
+        });
+
+        const response = await this._read(command);
+        return response.Grants;
+    }
 
     /**
      * Get a signed URL to a resource on S3
-     * @see https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#getSignedUrl-property
      */
-    async getSignedUrl(key) {
-
-        return new Promise((resolve, reject) => {            
-            this.s3.getSignedUrl('getObject', {Bucket: this.opts.bucket, Key: key}, (err, obj)=>{
-                if (err){
-                    return reject(err)
-                }
-                return resolve(obj)
-            })
-        })  
-
-    }
-
-    // ///////////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * 
-     * @param {*} key 
-     * @param {string} acl private | public-read | public-read-write | authenticated-read | aws-exec-read | bucket-owner-read | bucket-owner-full-control
-     */
-    async setObjectACL(key, acl){
-
-        const params = {
-            //ACL: acl,
+    async getSignedUrl(key: string): Promise<string> {
+        const command = new GetObjectCommand({
             Bucket: this.opts.bucket,
-            GrantRead: "uri=http://acs.amazonaws.com/groups/global/AllUsers", 
             Key: key
-        };
+        });
 
-        return await this._write('putObjectAcl', params);
-
+        return await getSignedUrl(this.s3, command, { expiresIn: 3600 });
     }
 
-    // ///////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * @param {string} key 
+     * @param {ObjectCannedACL} acl private | public-read | public-read-write | authenticated-read | aws-exec-read | bucket-owner-read | bucket-owner-full-control
+     */
+    async setObjectACL(key: string, acl: ObjectCannedACL): Promise<any> {
+        const command = new PutObjectAclCommand({
+            Bucket: this.opts.bucket,
+            Key: key,
+            ACL: acl
+        });
+
+        return await this._write(command);
+    }
 
     /**
-     * Upload a file to AWS, using multipart upload to handle large files.
-     * @see http://docs.aws.amazon.com/AWSJavaScriptSDK/guide/node-examples.html
-     *
-     * @params {string} content The string content
-     * @params {string} buckey The s3 bucket
-     * @params {string} key The s3 key (e.g. the path on S3)
-     * @params {function} onDone Callback for when the file has been uploaded
-     * @params {function} onProgress Callback called when there is a progress update
+     * Upload a file to AWS
+     * @param {string} content The string content
+     * @param {string} key The s3 key (e.g. the path on S3)
+     * @param {string} contentType Content type of the file
      */
-    async uploadString(content: string, key: string, contentType?: string) {
-
+    async uploadString(content: string, key: string, contentType?: string): Promise<string> {
         if (!this.authenticated){
             throw new AuthError(`You need to be authenticated to call uploadString!`);
         }  
         
-        if (!contentType){
-            contentType = 'text/plain';
-        }
-
-        // Remove any slashes at the start or end of string
+        contentType = contentType || 'text/plain';
         key = key.replace(/^\/|\/$/g, '');
 
-        //Logger.debug("Uploading " + fileName + " to S3: " + key);
-        
-        var options = {
-            partSize: 10 * 1024 * 1024,
-            queueSize: 1
-        };
-
-        const params = {
-            ACL: this.opts.acl,
+        const command = new PutObjectCommand({
             Bucket: this.opts.bucket,
             Key: key,
             Body: content,
-            ContentType: contentType
-        };
-            
-            
-        return new Promise((resolve, reject) => {    
+            ContentType: contentType,
+            ACL: this.opts.acl as ObjectCannedACL
+        });
 
-            this.s3.upload(params, options)
-                //.on('httpUploadProgress', function(progress) {
-                //    Logger.debug("Progress:", progress);
-                //    if (onProgress){
-                //        onProgress(progress);
-                //    }
-                //})
-                .send(function(err, data) {
-                    if (err){
-                        return reject(err)
-                    }
-                    //Logger.debug("File uploaded:", data);
-                    return resolve(key);
-                });
-        })
-
+        await this._write(command);
+        return this.getUrl(key);
     }
-
-    // ///////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Delete a file on S3
      */
-    async delete(key) {
-
-        const params = {
+    async delete(key: string): Promise<any> {
+        const command = new DeleteObjectCommand({
             Bucket: this.opts.bucket,
             Key: key
-        };
+        });
 
-        return await this._write('deleteObject', params);
-
+        return await this._write(command);
     }
 
     /**
-     * Delete all items from s3
-     * @param {object} items An object, with at minimum a Key field (i.e. the outout of a list)
-     * @returns 
+     * Delete multiple objects from s3
+     * @param {S3Object[]} items Array of S3 objects from list() command
      */
-    async deleteAll(items) {
+    async deleteAll(items: S3Object[]): Promise<any> {
+        const cleaned: ObjectIdentifier[] = map(items, (item) => {
+            const obj: ObjectIdentifier = { Key: item.Key || '' };
+            return obj;
+        });
 
-        // Remove anything from the items list that isn't a Key or VersionId
-        let cleaned = map(items, (item)=>{
-            return {
-                Key: item.Key,
-                VersionId: item.VersionId
+        const command = new DeleteObjectsCommand({
+            Bucket: this.opts.bucket,
+            Delete: {
+                Objects: cleaned
             }
         });
 
-        const params = {
-            Bucket: this.opts.bucket,
-            Delete: {                    
-                Objects: cleaned
-            }
-        };
-
-        return await this._write('deleteObjects', params);
-
-    }    
-
+        return await this._write(command);
+    }
 }
-
-export default S3Helper;
-

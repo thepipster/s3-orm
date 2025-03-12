@@ -3,10 +3,11 @@ import {isUndefined, uniq, map, isEmpty, intersection, slice} from "lodash";
 import {Promise} from "bluebird";
 import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
 import QueryError from "../errors/QueryError";
-import {ModelMeta} from "../decorators/Column"
+import {ModelMeta, type FieldMetas} from "../decorators/Column";
 import Indexing from "./Indexing";
-import {Connection} from "./Connection";
-import chalk from "chalk";
+import {Storm} from "./Storm";
+import {cyan, blue, green, yellow} from "colorette";
+import {Op, Query, Field} from "../types";
 
 const debugMode = true;
 
@@ -18,24 +19,7 @@ export class Model {
     //["constructor"]: typeof Model;
 
     // ///////////////////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Base constructor. The model should be like;
-     *
-     *  [
-     *      id: {type:'number', index:true},
-     *      noUsersInGame: {type:'number', defaultValue:0},
-     *      noUsers: {type:'number', defaultValue:0},
-     *      isStarted: {type:'number', defaultValue: 0},
-     *      startTime: {type: 'date', defaultValue: ()=>{return Date.now()}}
-     *      currentQuestionId: {type:'number', defaultValue: 0},
-     *      questionIds: {type:'array', default: []}
-     *  ]
-     *
-     * @param {object} data The initial data, e.g. {id:0}
-     * @param {object} prefix The prefix, e.g. 'game:'
-     * @param {object} model The model
-     */
+    
     constructor(data?) {
 
         if (!data){
@@ -44,7 +28,7 @@ export class Model {
 
         // Grab model meta data to get the column definitions
         const model = ModelMeta[this.constructor.name];
-/*        
+       
         if (model) {
             for (let key in model) {
 
@@ -74,7 +58,7 @@ export class Model {
                         this[key] = null;
                     }
     
-                    Logger.info(`${chalk.cyan(key)} of type ${chalk.blueBright(defn.name)} = ${chalk.green(data[key])} (${typeof data[key]})`);
+                    Logger.info(`${cyan(key)} of type ${blue(defn.name)} = ${green(data[key])} (${typeof data[key]})`);
     
                 }
                 catch(err){
@@ -89,8 +73,6 @@ export class Model {
                 this.id = data.id;
             }
         }
-            */
-
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +81,7 @@ export class Model {
         return this.name;
     }
 
-    private static _schema(): object {
+    private static _schema(): FieldMetas {
         return ModelMeta[this.name];
     }
 
@@ -125,7 +107,7 @@ export class Model {
     static async resetIndex(){
         const modelName = this._name();
         const model = this._schema();        
-        const indx = new Indexing(null, modelName, model, Connection.s3());
+        const indx = new Indexing(null, modelName, model, Storm.s3());
         await indx.cleanIndices();
     }
 
@@ -137,7 +119,7 @@ export class Model {
      */
     static async exists(id) {
         const modelName = this._name();        
-        return await Connection.s3().hasObject(`${modelName}/${id}`);
+        return await Storm.s3().hasObject(`${modelName}/${id}`);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -149,7 +131,7 @@ export class Model {
         if (!type.isNumeric){
             throw new QueryError(`${modelName}.${fieldName} is not numeric!`);
         }
-        return await Connection.s3().zGetMax(`${modelName}/${fieldName}`, false);
+        return await Storm.s3().zGetMax(`${modelName}/${fieldName}`, false);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -180,14 +162,14 @@ export class Model {
             throw new Error(`Trying to remove document without an id!`);
         }
 
-        const s3 = Connection.s3();
+        const s3 = Storm.s3();
         const modelName = this.constructor.name;
         const model = ModelMeta[this.constructor.name];
         const indx = new Indexing(this.id, modelName, model, s3);
 
 
         for (let key in model) {
-            //Logger.debug(`[${chalk.green(modelName)}] deleting index for ${chalk.yellow(key)}, val = ${this[key]}`);
+            //Logger.debug(`[${chalk.default.green(modelName)}] deleting index for ${chalk.default.yellow(key)}, val = ${this[key]}`);
             await indx.removeIndexForField(key, this[key]);
         }
         
@@ -224,7 +206,7 @@ export class Model {
 
         const modelName = this.constructor.name;
         const model = ModelMeta[this.constructor.name];        
-        const s3 = Connection.s3();
+        const s3 = Storm.s3();
         const indx = new Indexing(this.id, modelName, model, s3);
         var oldValues = {};
 
@@ -244,14 +226,12 @@ export class Model {
         else {
             // We need to set the id! So get the highest id in use for this model
             let maxId = await indx.getMaxId();
-            //Logger.debug(`[${chalk.green(modelName)}] maxId = ${maxId} (${typeof maxId})`);
+            //Logger.debug(`[${chalk.default.green(modelName)}] maxId = ${maxId} (${typeof maxId})`);
             this.id = maxId + 1;
             await indx.setMaxId(this.id);
         }
     
-        if (debugMode){
-            Logger.debug(`Saving ${modelName} ${this.id}`)
-        }
+        //Logger.debug(`Saving ${modelName} ${this.id}`)
 
         var keys = [];
 
@@ -266,20 +246,18 @@ export class Model {
             const defn = model[key];
             const val = this[key];   
 
-            //Logger.debug(`${chalk.green(modelName)}.${chalk.yellow(key)}] val = ${val}`);
+            //Logger.debug(`${chalk.default.green(modelName)}.${chalk.default.yellow(key)}] val = ${val}`);
 
             // Check if this key is unique and already exists (if so, throw an error)
             if (defn.unique) {                    
-                //Logger.debug(`Checking if ${chalk.green(modelName)}.${chalk.yellow(key)} is unique, val = ${val}`);
+                //Logger.debug(`Checking if ${chalk.default.green(modelName)}.${chalk.default.yellow(key)} is unique, val = ${val}`);
                 let alreadyExists = await indx.isMemberUniques(key, val);    
                 if (alreadyExists) {
                     throw new UniqueKeyViolationError(`Could not save as ${key} = ${val} is unique, and already exists`);
                 }
             }
 
-            if (debugMode){
-                Logger.debug(`${chalk.green(modelName)}.${chalk.yellow(key)}]data[key] = ${data[key]}`);
-            }
+            //Logger.debug(`${green(modelName)}.${yellow(key)} = ${val}`);
         
             if (typeof defn.onUpdateOverride == "function") {
                 this[key] = defn.onUpdateOverride();
@@ -292,7 +270,7 @@ export class Model {
         // Write data to S3
         //
 
-        //Logger.debug(`[${chalk.greenBright(modelName)}] Saving object ${this.id} to ${modelName}/${this.id}`);
+        //Logger.debug(`[${chalk.default.greenBright(modelName)}] Saving object ${this.id} to ${modelName}/${this.id}`);
         await s3.setObject(`${modelName}/${this.id}`, this);
 
         //
@@ -303,12 +281,12 @@ export class Model {
         indx.id = this.id;
 
 
-        Logger.debug(`[${chalk.greenBright(modelName)}] Setting up indexes for instance ${this.id}`);
+        //Logger.debug(`[${green(modelName)}] Setting up indexes for instance ${this.id}`);
     
         await Promise.map(keys, async (key)=>{
             
             try {
-                //Logger.debug(`[${chalk.green(modelName)}.${chalk.yellow(key)}] val = ${this[key]}, prevVal = ${oldValues[key]}`);
+                //Logger.debug(`[${chalk.default.green(modelName)}.${chalk.default.yellow(key)}] val = ${this[key]}, prevVal = ${oldValues[key]}`);
                 await indx.setIndexForField(key, this[key], oldValues[key]);
             } 
             catch (err) {
@@ -327,13 +305,13 @@ export class Model {
 
         }, {concurrency:1});
 
-        Logger.debug(`[${chalk.greenBright(modelName)}] done setting indexes`);
+        //Logger.debug(`[${green(modelName)}] done setting indexes`);
 
         // TODO: add support for expires
 
         // If this item expires, add to the expires index
         //if (colMeta && colMeta.expires) {  
-            //Logger.debug(`[${chalk.greenBright(modelName)}] Setting expires`);
+            //Logger.debug(`[${chalk.default.greenBright(modelName)}] Setting expires`);
         //    await indx.addExpires(colMeta.expires);
         //}
 
@@ -348,12 +326,12 @@ export class Model {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async loadFromId(id) {
+    static async loadFromId(id: number) {
         try {
 
             const modelName = this._name();
             const key = `${modelName}/${id}`;
-            const data = await Connection.s3().getObject(key);
+            const data = await Storm.s3().getObject(key);
             return new this(data);
 
         } catch (err) {
@@ -365,9 +343,9 @@ export class Model {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async findOne(query, options) {
+    static async findOne(query: Query) {
         try {
-            let docIds = await this.getIds(query, options);
+            let docIds = await this.getIds(query);
 
             if (docIds.length == 0) {
                 return null;
@@ -404,11 +382,11 @@ export class Model {
      * @param {*} query The query, e.g. {name:'fred'} or {name:'fred', age:25}. Note that
      * query keys must be indexed fields in the schema.
      */
-    static async find(query, options) {
+    static async find(query: Query) {
 
         try {
             
-            let docIds = await this.getIds(query, options);
+            let docIds = await this.getIds(query);
 
             if (docIds.length == 0) {
                 return [];
@@ -431,59 +409,73 @@ export class Model {
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * Get a list of id's based on the query and options
-     * @param {*} query Support for; gt, gte, lt, lte
-     * @param {*} options Support for; limit, offset, order (ASC or DESC), 
+     * Get a list of id's based on the query and options. Supports queries like;
+     * Query for all documents where the fullName field contains a substring of 'bob'
+     *   qry = {fullName: 'bob'};
+     * Query for all documents where the fullName field contains a substring of 'ob' (so bob would match this)
+     *   qry = {fullName: 'ob'};
+     * Query for all documents where the age = 20
+     *   qry = {age: 20};
+     * Query for all documents where the age is greater than or equal to 19
+     *   qry = {age: {$gte: 19}};
+     * Query for all documents where the fullName field contains a substring of 'bob' AND the age is greater than or equal to 19
+     *   qry = {fullName: 'bob', age: {$gte: 19}};
+     * Query for all documents where the score is les than 50.56
+     *   qry = {score: {$lt: 50.56}};
+     * 
+     * @param {Query} query Support for MongoDB-style operators ($gt, $gte, $lt, $lte, etc) 
+     * and support for; limit, offset, order (ASC or DESC)
      * @returns 
      */
-    static async getIds(query, options) {
+    static async getIds(query: Query) {
         
-        const modelName = this._name();
-        const model = this._schema();
-        const indx = new Indexing(null, modelName, model, Connection.s3());
+        const modelName: string = this._name();
+        const model: ColumnParams = this._schema();
+        const indx = new Indexing(null, modelName, model, Storm.s3());
         var queryParts = [];
         var results = [];
 
         // Set up any default options
-        if (!options){
-            options = {
-                offset: 0,
-                limit: 1000
-            }
+        if (!query.order) {
+            query.order = 'ASC';
         }
-        options.order = (options.order) ? options.order : 'ASC';
+        if (!query.limit) {
+            query.limit = 1000;
+        }
+        //if (!query.offset) {
+        //    query.offset = 0;
+        //}
 
         // Deal with the special case of an empty query, which means return everything!
         if (isEmpty(query)){
-
-            const list = await Connection.s3().listObjects(modelName);
+            const list = await Storm.s3().listObjects(modelName);
             
             for (let i=0; i<list.length; i+=1){
                 let key = list[i];
-                let data = await Connection.s3().getObject(key);
+                let data = await Storm.s3().getObject(key);
                 results.push(data.id);
             }
                 
             return results;
         }
 
-
-        //Logger.debug('query = ', query);
-
         // Convert query into a flat array for easy parsing
-
         for (let key in query){
 
             const defn = model[key];
-            var qry = {
-                key, 
-                type: 'basic',
-                value: query[key]
-            };
+            const value = query[key];
+            let qry: any = {key, type: 'basic', value};
 
             if (defn.type.isNumeric) {
                 qry.type = 'numeric';
-                qry.order = options.order;
+                qry.order = query.order;
+                // Handle MongoDB-style operators if present
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    const op = value as Op;
+                    if (op.$gt !== undefined || op.$gte !== undefined || op.$lt !== undefined || op.$lte !== undefined) {
+                        qry.value = op;
+                    }
+                }
             }
             else if (defn.isUnique) {
                 qry.type = 'unique';
@@ -492,10 +484,7 @@ export class Model {
             queryParts.push(qry);
         }
 
-        //Logger.debug('queryParts = ', queryParts);
-
         // Now process each part of the query...
-
         await Promise.map(queryParts, async (qry) => {
             if (qry.type == 'numeric'){
                 if (typeof qry.value == 'number'){
@@ -509,7 +498,6 @@ export class Model {
             else if (qry.type == 'unique'){
                 results.push(await indx.search(qry.key, qry.value));
             }
-        
         });
 
         // And get the intersaction of all the results
@@ -517,12 +505,13 @@ export class Model {
         let inter = intersection(...results);
 
         // Support paging
-        if (options.offset){
-            inter = slice(inter, options.offset);
+        if (query.offset && query.limit){
+            inter = slice(inter, query.offset, query.offset + query.limit);
         }
-        if (options.limit){
-            inter = slice(inter, 0, options.limit);
+        else if (query.limit){
+            inter = slice(inter, 0, query.limit);
         }
+
 
         //Logger.debug(results);
         //Logger.info(inter);

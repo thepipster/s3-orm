@@ -2,7 +2,7 @@ import "reflect-metadata";
 import {type EntityParams} from "../types";
 import {Model} from "../core/Model";
 import Logger from "../utils/Logger";
-import chalk from "chalk";
+import {cyan, blue} from "colorette";
 
 //export const ModelMeta = new Map<string, Field[]>();
 export const ModelOptions: EntityParams[] = [];
@@ -16,9 +16,10 @@ export function Entity(params?: EntityParams) : ClassDecorator {
         console.log(params);
 
         //const t = Reflect.getMetadata("design:type", target, propertyKey);
-        //const className = target.constructor.name;
+        const className = target.constructor.name;
 
-        //Logger.debug(`[${chalk.cyan(className)}] ${chalk.blueBright(propertyKey)}`, target);
+        //Logger.debug(`[${chalk.default.cyan(className)}] ${chalk.default.blueBright(propertyKey)}`, target);
+        Logger.debug(`[${cyan(className)}] ${blue('Entity')}`, target);
         /*
         `[${chalk.cyan(className)}] ${chalk.blueBright(name)}`
 

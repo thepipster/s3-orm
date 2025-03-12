@@ -1,7 +1,6 @@
-
 "use strict";
 
-import AuthError from "./AuthError";
+import AuthError from "../../lib/errors/AuthError";
 
 describe('Lib:AuthError', () => {
 

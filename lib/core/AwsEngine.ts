@@ -1,10 +1,9 @@
-
 import Logger from "../utils/Logger";
 import {reverse, isUndefined, map, isEmpty, intersection, slice} from "lodash";
 import {Promise} from "bluebird";
-import S3Helper from "../services/S3Helper";
+import {S3Helper, type S3Options} from "../services/S3Helper";
 import {EngineHelpers} from "./EngineHelpers";
-import {S3Options} from "../types";
+import {Query} from "../types";
 
 export class AwsEngine {
     
@@ -21,7 +20,7 @@ export class AwsEngine {
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
-    async getObjectTypes(path: string){
+    async getObjectTypes(path: string): Promise<string[]> {
         let res = await this.aws.list(EngineHelpers.getKey('hash'));
         Logger.debug('Listing from ', EngineHelpers.getKey('hash'));
         Logger.debug(res);
@@ -32,7 +31,7 @@ export class AwsEngine {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async setObject(key, obj){
+    async setObject(key: string, obj: any): Promise<void> {
         let txt = JSON.stringify(obj);
         //let key = EngineHelpers.getKey('sets', setName, val);
         await this.aws.uploadString(txt, EngineHelpers.getKey('hash', key));
@@ -40,20 +39,20 @@ export class AwsEngine {
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
-    async getObject(key){
+    async getObject(key: string): Promise<any> {
         let res = await this.aws.get(EngineHelpers.getKey('hash', key));
         return JSON.parse(res);
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
-    async delObject(key){
+    async delObject(key: string): Promise<void> {
          await this.aws.delete(EngineHelpers.getKey('hash', key));
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
-    async hasObject(key){
+    async hasObject(key: string): Promise<boolean> {
         return await this.aws.exists(EngineHelpers.getKey('hash', key));
     }
 
@@ -65,7 +64,7 @@ export class AwsEngine {
      * @param {*} path 
      * @returns 
      */
-    async listObjects(path){
+    async listObjects(path: string): Promise<string[]> {
         let key = EngineHelpers.getPath('hash', path);
         let res = await this.aws.list(key);
         return await Promise.map(res, async (item)=>{
@@ -76,21 +75,21 @@ export class AwsEngine {
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
-    async exists(key){
+    async exists(key: string): Promise<boolean> {
         return await this.aws.exists(EngineHelpers.getKey('keyval', key));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async get(key){
+    async get(key: string): Promise<string> {
         return await this.aws.get(EngineHelpers.getKey('keyval', key));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async list(path, opts){
+    async list(path: string, opts: {fullPath?: boolean} = {}): Promise<string[]> {
         let res = await this.aws.list(EngineHelpers.getPath('keyval', path));
-        return map(res, (item)=>{
+        return map(res, (item: any)=>{
             if (opts && opts.fullPath){
                 return item.Key;
             }
@@ -100,7 +99,7 @@ export class AwsEngine {
     
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async set(key, val){
+    async set(key: string, val: string): Promise<void> {
         try {
             await this.aws.uploadString(val, EngineHelpers.getKey('keyval', key));
         }
@@ -112,13 +111,13 @@ export class AwsEngine {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async del(key){
+    async del(key: string): Promise<void> {
         await this.aws.delete(EngineHelpers.getKey('keyval', key));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async delBatch(keys){
+    async delBatch(keys: string[]): Promise<void> {
 
         if (isEmpty(keys)){
             return null;
@@ -152,10 +151,7 @@ export class AwsEngine {
      * @param {string} val The value to add to the set
      * @param {string} meta We can also add some meta data associated with this member (S3 only)
      */
-    async setAdd(setName, val, meta){   
-        if (!meta){
-            meta = '';
-        }
+    async setAdd(setName: string, val: string, meta: string = ''): Promise<void> {   
         //let res = await this.aws.getObjectACL(`${this.rootPath}sets/${setName}`);
         //Logger.warn(res);
         //await this.aws.setObjectACL(`${this.rootPath}sets/${setName}`, 'public-read');    
@@ -170,13 +166,13 @@ export class AwsEngine {
      * @param {string} val 
      * @returns 
      */
-    async setGetMeta(setName, val){
+    async setGetMeta(setName: string, val: string): Promise<string> {
         return await this.aws.get(EngineHelpers.getKey('sets', setName, val));
     }
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
-    async setRemove(setName, val){
+    async setRemove(setName: string, val: string): Promise<void> {
         await this.aws.delete(EngineHelpers.getKey('sets', setName, val));
     }
 
@@ -186,7 +182,7 @@ export class AwsEngine {
      * Clear everything from a set
      * @param {string} setName The set name
      */
-    async setClear(setName){
+    async setClear(setName: string): Promise<void> {
         let items = await this.aws.list(EngineHelpers.getPath('sets', setName));
         if (items && items.length > 0){
             await this.aws.deleteAll(items);
@@ -195,7 +191,7 @@ export class AwsEngine {
 
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
-    async setIsMember(setName, val){
+    async setIsMember(setName: string, val: string): Promise<boolean> {
         try {
             const key = EngineHelpers.getKey('sets', setName, val);
             return await this.aws.exists(key);
@@ -207,9 +203,9 @@ export class AwsEngine {
     
 	// ///////////////////////////////////////////////////////////////////////////////////////
 
-    async setMembers(setName){        
+    async setMembers(setName: string): Promise<string[]> {        
         let res = await this.aws.list(EngineHelpers.getPath('sets', setName));
-        let list = map(res, (item)=>{
+        let list = map(res, (item: any)=>{
             return EngineHelpers.decode(item.Key.split('/').pop());
         });
         return list;
@@ -221,7 +217,7 @@ export class AwsEngine {
      * Get the intersection of a number of sets
      * @param {array} keys An array of strings, with each string being the key of the set
      */
-     async setIntersection(keys){
+     async setIntersection(keys: string[]): Promise<string[]> {
         let items = await Promise.map(keys, async (setName) => {            
             return this.setMembers(setName);
         });        
@@ -241,22 +237,22 @@ export class AwsEngine {
      * @param {int} score 
      * @param {string} val 
      */
-    async zSetAdd(setName, score, val, meta){
+    async zSetAdd(setName: string, score: number, val: string, meta: string | boolean = ''): Promise<void> {
         //Logger.debug(`zSetAdd(setName = ${setName}, score = ${score}, val = ${val}, meta = ${meta})`)
         if (meta === false){
             meta = 'false';
         }    
-        else if (!meta && meta != 0){
+        else if (!meta){
             meta = '';
         }
         let key = EngineHelpers.getKeyWithScore('zsets', setName, val, score);
-        await this.aws.uploadString(meta, key);
+        await this.aws.uploadString(meta as string, key);
 
     }
     
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async zSetRemove(setName, score, val){
+    async zSetRemove(setName: string, score: number, val: string): Promise<void> {
         let key = EngineHelpers.getKeyWithScore('zsets', setName, val, score);
         await this.aws.delete(key);
     }
@@ -269,12 +265,11 @@ export class AwsEngine {
      * @param {*} scores 
      * @returns 
      */
-    async zGetMax(setName, scores){
-
+    async zGetMax(setName: string, scores?: boolean): Promise<string | {score: number, val: string}> {
         let key = EngineHelpers.getKey('zsets', setName)+'/';
         let res = await this.aws.list(key);
         
-        let item = res.pop();
+        let item:any = res.pop();
 
         key = item.Key.split('/').pop();
         let parts = key.split('###');
@@ -293,13 +288,12 @@ export class AwsEngine {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async zSetMembers(setName, scores){
-        
+    async zSetMembers(setName: string, scores?: boolean): Promise<Array<string | {score: number, val: string}>> {
         let key = EngineHelpers.getPath('zsets', setName);
         //let key = `${this.rootPath}zsets/${setName}/`;
         let res = await this.aws.list(key);
 
-        let list = map(res, (item)=>{
+        let list = map(res, (item: any)=>{
 
             key = item.Key.split('/').pop();
             let parts = key.split('###');
@@ -321,8 +315,7 @@ export class AwsEngine {
     
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async zSetClear(setName){
-
+    async zSetClear(setName: string): Promise<void> {
         let items = await this.aws.list(EngineHelpers.getPath('zsets', setName));
         if (items && items.length > 0){
             await this.aws.deleteAll(items);
@@ -343,11 +336,10 @@ export class AwsEngine {
      * @param {*} opts gt, gte, lt, lte, limit, order (ASC or DESC), scores
      * @returns 
      */
-    async zRange(setName, opts){
-
+    async zRange(setName: string, opts: Query): Promise<Array<{score: number, val: string}>> {
         //Logger.debug(`Entering zRange, setName = ${setName}`, opts);
 
-        let res = await this.zSetMembers(setName, true);
+        let res = await this.zSetMembers(setName, true) as Array<{score: number, val: string}>;
     
         if (!opts.$lt && !opts.$lte && !opts.$gt && !opts.$gte){
             throw new Error(`You need to set at least one range specifier ($lt, $lte, $gt, $gte)!`);
@@ -355,7 +347,7 @@ export class AwsEngine {
 
         let items = [];
 
-        function isNull(val){
+        function isNull(val: any): boolean {
             if (val === 0){
                 return false;
             }
@@ -404,12 +396,7 @@ export class AwsEngine {
               
 
             if (lowerFlag && upperFlag){
-                if (opts.score){
-                    items.push(item);
-                }
-                else {
-                    items.push(item.val);
-                }
+                items.push(item);
             }
         }
         
@@ -426,4 +413,3 @@ export class AwsEngine {
 
 
 }
-

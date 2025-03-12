@@ -1,7 +1,6 @@
-
 "use strict";
 
-import UniqueKeyViolationError  from './UniqueKeyViolationError';
+import UniqueKeyViolationError from '../../lib/errors/UniqueKeyViolationError';
 
 describe('Lib:UniqueKeyViolationError', () => {
 

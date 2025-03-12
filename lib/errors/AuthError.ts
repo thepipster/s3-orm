@@ -4,9 +4,10 @@
  */
 class AuthError extends Error {
     
+    code: number = 403;
+
     constructor(...args) {
         super(...args)
-        this.code = 401
         Error.captureStackTrace(this, AuthError)
     }
 }

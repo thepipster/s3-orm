@@ -1,12 +1,14 @@
 import "reflect-metadata";
-
 import {type Field, type ColumnParams} from "../types";
 import {Model} from "../core/Model";
 import Logger from "../utils/Logger";
-import chalk from "chalk";
+import {cyan, blue} from "colorette";
+//import BaseType from "../types/BaseType";
+//import BooleanType from "../types/BooleanType";
 
-//export const ModelMeta = new Map<string, Field[]>();
-export const ModelMeta: Field[] = [];
+//export const ModelMeta = new Map<string, Map<string, Field>>();
+export type FieldMetas = Map<string, Field>;
+export const ModelMeta: FieldMetas[] = [];
 
 // any parameters, even optional ones!
 export function Column(params?: ColumnParams) 
@@ -18,27 +20,51 @@ export function Column(params?: ColumnParams)
 
         const field: Field = {
             name: propertyKey.trim(),
-            type: t.name.toLowerCase()            
+            type: t.name.toLowerCase(),
+            isNumeric: false      
         };
 
-        if (params && params.defaultValue){
-            field.defaultValue = params.defaultValue;
+        if (params && params.default){
+            field.default = params.default;
         }
+
+        // TODO: handle case where we have no type passed in
+        // and we look up type from member variable type
 
         if (!ModelMeta[className]){
-            ModelMeta[className] = [];
+            ModelMeta[className] = new Map<string, Field>();
         }
 
-        ModelMeta[className].push(field);
+        if (field.type == 'number' || field.type == 'integer' || field.type == 'float'){
+            field.isNumeric = true;
+        }
 
-        //console.log(`---------- ${className} ------------`);
-        //console.log('target = ', target);
-        //console.log('target.constructor = ', target.constructor);
-        //console.log('target.constructor.id = ', target.id);
-        //console.log(`[${className}] ${propertyKey} type: ${t.name}`);
+        // TODO: Add in support for timestamp fields
+        /*
+        if (!extendedSchema['created']){
+            extendedSchema.created = {
+                type: DataTypes.Date,
+                index: true,
+                defaultValue: function () {
+                    return new Date();
+                },
+            };    
+        }
+
+        if (!extendedSchema['modified']){
+            extendedSchema.modified = {
+                type: DataTypes.Date,
+                onUpdateOverride: function () {
+                    return new Date();
+                },
+            };    
+        }
+        */
+
+        ModelMeta[className].set(field.name, field);
+
         ModelMeta[className].forEach(function(fieldInfo, name){
-            Logger.debug(`[${chalk.cyan(className)}] ${chalk.blueBright(name)}`, fieldInfo);        
+            Logger.debug(`[${cyan(className)}] ${blue(name)}`, fieldInfo);        
         });
-
     };
 }

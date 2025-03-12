@@ -1,5 +1,6 @@
 import Logger from "../utils/Logger";
-
+import { EngineHelpers } from "./EngineHelpers";
+import { Storm } from "./Storm";
 import {
     isNull,
     isUndefined,
@@ -8,25 +9,23 @@ import {
     isFinite,
     uniq
 } from "lodash";
-
 import {Promise} from "bluebird";
 import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
-import { AwsEngine } from "./AwsEngine";
 
 class Indexing {
 
-    id: string = "";
+    id: number = 0;
     schema: any = {};
     fields: string[] = [];
     modelName: string = "";
-    s3: AwsEngine;
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     constructor(id, modelName, schema, s3Engine){
         this.id = id;
         this.schema = schema;
         this.fields = Object.keys(schema);
         this.modelName = modelName;
-        this.s3 = s3Engine;
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -79,10 +78,10 @@ class Indexing {
         val = this.stringify(fieldName, val);
         const key = Indexing.getIndexName(this.modelName, fieldName);
 
-        let alreadyExistsId = await this.s3.setIsMember(key, val);
+        let alreadyExistsId = await Storm.s3().setIsMember(key, val);
 
         // Throw error if this val already exists in the set
-        if (alreadyExistsId && alreadyExistsId != this.id) {
+        if (alreadyExistsId) {
             return true;
         }
 
@@ -94,14 +93,14 @@ class Indexing {
 
     async clearUniques(fieldName){
         this._checkKey(fieldName);
-        return await this.s3.setClear(Indexing.getIndexName(this.modelName, fieldName));
+        return await Storm.s3().setClear(Indexing.getIndexName(this.modelName, fieldName));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async getUniques(fieldName){
         this._checkKey(fieldName);
-        return await this.s3.setMembers(Indexing.getIndexName(this.modelName, fieldName));
+        return await Storm.s3().setMembers(Indexing.getIndexName(this.modelName, fieldName));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +108,7 @@ class Indexing {
     async removeUnique(fieldName, val){
         this._checkKey(fieldName);
         val = this.stringify(fieldName, val);
-        await this.s3.setRemove(Indexing.getIndexName(this.modelName, fieldName), val);
+        await Storm.s3().setRemove(Indexing.getIndexName(this.modelName, fieldName), val);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -125,15 +124,15 @@ class Indexing {
         val = this.stringify(fieldName, val);
         const key = Indexing.getIndexName(this.modelName, fieldName);
 
-        let alreadyExistsId = await this.s3.setIsMember(key, val);
+        let alreadyExistsId = await Storm.s3().setIsMember(key, val);
 
         // Throw error if this val already exists in the set
-        if (alreadyExistsId && alreadyExistsId != this.id) {
+        if (alreadyExistsId) {
             throw new UniqueKeyViolationError(`${fieldName} = ${val} is unique, and already exists`);
         }
 
         //return await this.add(fieldName, val);
-        await this.s3.setAdd(Indexing.getIndexName(this.modelName, fieldName), val);
+        await Storm.s3().setAdd(Indexing.getIndexName(this.modelName, fieldName), val);
         return
     }
     
@@ -151,8 +150,8 @@ class Indexing {
         }       
         this._checkKey(fieldName); 
         val = this.stringify(fieldName, val);
-        const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${this.s3._encode(val)}###${this.id}`;
-        await this.s3.del(key);  
+        const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
+        await Storm.s3().del(key);  
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -168,8 +167,8 @@ class Indexing {
         }        
         this._checkKey(fieldName);        
         val = this.stringify(fieldName, val);
-        const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${this.s3._encode(val)}###${this.id}`;
-        await this.s3.set(key, val);  
+        const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
+        await Storm.s3().set(key, val);  
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -181,11 +180,12 @@ class Indexing {
      */
     async list(fieldName){                        
         this._checkKey(fieldName);
-        let res = await this.s3.list(Indexing.getIndexName(this.modelName, fieldName));
+        let res = await Storm.s3().list(Indexing.getIndexName(this.modelName, fieldName));
         return map(res, (item)=>{
             let parts = item.split('###');
+            const decodedValue = EngineHelpers.decode(parts[0]);
             return {
-                val: this.parse(fieldName, this.s3._decode(parts[0])), 
+                val: this.parse(fieldName, decodedValue), 
                 id: parseInt(parts[1])
             }            
         });
@@ -206,11 +206,11 @@ class Indexing {
                 
         for (let i=0; i<res.length; i+=1){             
             let item = res[i];
-            let key = `${Indexing.getIndexName(this.modelName, fieldName)}/${this.s3._encode(item.val)}###${item.id}`;
+            let key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(item.val)}###${item.id}`;
             deleteBatch.push(key);            
         }
 
-        await this.s3.delBatch(deleteBatch);
+        await Storm.s3().delBatch(deleteBatch);
 
     }
 
@@ -222,7 +222,7 @@ class Indexing {
      * @param {*} searchVal 
      * @returns 
      */
-    async search(fieldName, searchVal, options){        
+    async search(fieldName, searchVal){        
         
         this._checkKey(fieldName);
         /*
@@ -265,14 +265,14 @@ class Indexing {
 
     async getNumerics(fieldName){
         this._checkKey(fieldName);
-        return await this.s3.zSetMembers(Indexing.getIndexName(this.modelName, fieldName), true);
+        return await Storm.s3().zSetMembers(Indexing.getIndexName(this.modelName, fieldName), true);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async clearNumerics(fieldName){
         this._checkKey(fieldName);
-        return await this.s3.zSetClear(Indexing.getIndexName(this.modelName, fieldName));
+        return await Storm.s3().zSetClear(Indexing.getIndexName(this.modelName, fieldName));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -285,7 +285,7 @@ class Indexing {
         val = this.stringify(fieldName, val);
         // Stuff the id into the index as a meta value
         try {
-            await this.s3.zSetAdd(Indexing.getIndexName(this.modelName, fieldName), val, this.id+'');
+            await Storm.s3().zSetAdd(Indexing.getIndexName(this.modelName, fieldName), val, this.id+'');
         }
         catch(err){
             Logger.error(err);
@@ -295,17 +295,18 @@ class Indexing {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async removeNumeric(fieldName, val){
+    async removeNumeric(fieldName: string, val: number){
         if (this._isNull(val)){
             return;
         }          
         this._checkKey(fieldName);
         val = this.stringify(fieldName, val);
         try {
-            await this.s3.zSetRemove(Indexing.getIndexName(this.modelName, fieldName), val+'', this.id+'');
+            await Storm.s3().zSetRemove(Indexing.getIndexName(this.modelName, fieldName), val, this.id+'');
         }
         catch(err){
-            throw new Error(`Error removing numeric index for field ${fieldName}, val = ${val} and id = ${this.id}`, err.toString());
+            Logger.error(err.toString());
+            throw new Error(`Error removing numeric index for field ${fieldName}, val = ${val} and id = ${this.id}`);
         }        
     }
 
@@ -319,7 +320,7 @@ class Indexing {
      */
     async searchNumeric(fieldName, query){
         this._checkKey(fieldName);
-        let res = await this.s3.zRange(Indexing.getIndexName(this.modelName, fieldName), query);
+        let res = await Storm.s3().zRange(Indexing.getIndexName(this.modelName, fieldName), query);
         if (!res){
             return [];
         }
@@ -330,7 +331,7 @@ class Indexing {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static getIndexName(modelName, fieldName){
+    static getIndexName(modelName: string, fieldName: string){
         return `${modelName}/${fieldName}`;
     }
 
@@ -341,15 +342,15 @@ class Indexing {
      * it makes sense to cache id's as a special case
      * @param {*} modelName 
      */
-    async setMaxId(id){
-        await this.s3.set(`${this.modelName}/maxid`, id+'');
+    async setMaxId(id: number){
+        await Storm.s3().set(`${this.modelName}/maxid`, id+'');
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async getMaxId(){
         try {
-            let val = await this.s3.get(`${this.modelName}/maxid`);
+            let val = await Storm.s3().get(`${this.modelName}/maxid`);
             let no = parseInt(val)
             //Logger.debug(`getMaxId() = Read ${val}, parsed = ${no}, isNumber(no) = ${isNumber(no)}, isFinite(no) = ${isFinite(no)}`);
             if (!isNumber(no) || !isFinite(no)){
@@ -377,14 +378,14 @@ class Indexing {
         const isNull = this._isNull(val);        
 
         
-        //Logger.info(`Removing index for ${chalk.cyan(key)};
+        //Logger.info(`Removing index for ${chalk.default.cyan(key)};
         //    val ${val},
-        //    isNull ${isNull},
-        //    unique ${chalk.blueBright(fieldDef.unique)},
-        //    isNumeric ${chalk.blueBright(fieldDef.type.isNumeric)},
-        //    isInDb ${chalk.blueBright(fieldDef.isInDb)},
-        //    index ${chalk.blueBright(fieldDef.index)},
-        //`);
+        //    prevVal ${prevVal},
+        //    unique ${chalk.default.blueBright(fieldDef.unique)},
+        //    isNumeric ${chalk.default.blueBright(fieldDef.type.isNumeric)},
+        //    isInDb ${chalk.default.blueBright(fieldDef.isInDb)},
+        //    index ${chalk.default.blueBright(fieldDef.index)},
+        //    id ${this.id}`);
         
 
         if (isNull){
@@ -406,16 +407,14 @@ class Indexing {
     
         }
         catch(err){
-            /*
-            Logger.error(`Error removing index for ${chalk.cyan(key)};
-                val ${val},
-                isNull ${isNull},
-                unique ${chalk.blueBright(fieldDef.unique)},
-                isNumeric ${chalk.blueBright(fieldDef.type.isNumeric)},
-                isInDb ${chalk.blueBright(fieldDef.isInDb)},
-                index ${chalk.blueBright(fieldDef.index)},
-            `);
-            */
+            //Logger.error(`Error removing index for ${chalk.default.cyan(key)};
+            //    val ${val},
+            //    prevVal ${prevVal},
+            //    unique ${chalk.default.blueBright(fieldDef.unique)},
+            //    isNumeric ${chalk.default.blueBright(fieldDef.type.isNumeric)},
+            //    isInDb ${chalk.default.blueBright(fieldDef.isInDb)},
+            //    index ${chalk.default.blueBright(fieldDef.index)},
+            //    id ${this.id}`);
             Logger.error(err);
             //process.exit(1);
             throw err;
@@ -426,7 +425,7 @@ class Indexing {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async setIndexForField(key, val, oldVal){
+    async setIndexForField(key: string, val: any, oldVal: any){
         
         const fieldDef = this.schema[key];
 
@@ -445,7 +444,7 @@ class Indexing {
 
         // If it's not dirty (unchanged), then nothing to be done
         if (!isDirty){
-            //Logger.info(`Skipping index for ${chalk.cyan(key)} (it's not dirty)`);
+            //Logger.info(`Skipping index for ${chalk.default.cyan(key)} (it's not dirty)`);
             return;
         }
 
@@ -456,14 +455,14 @@ class Indexing {
         }
 
         /*                
-        Logger.info(`Setting index for ${chalk.cyan(key)};
+        Logger.info(`Setting index for ${chalk.default.cyan(key)};
             val ${val},
             oldVal ${oldVal},
-            unique ${chalk.blueBright(fieldDef.unique)},
+            unique ${chalk.default.blueBright(fieldDef.unique)},
             isNull ${isNull},
-            isNumeric ${chalk.blueBright(fieldDef.type.isNumeric)},
-            isInDb ${chalk.blueBright(fieldDef.isInDb)},
-            index ${chalk.blueBright(fieldDef.index)},
+            isNumeric ${chalk.default.blueBright(fieldDef.type.isNumeric)},
+            isInDb ${chalk.default.blueBright(fieldDef.isInDb)},
+            index ${chalk.default.blueBright(fieldDef.index)},
         `);
         */
 
@@ -494,11 +493,11 @@ class Indexing {
     async cleanIndices() {
 
         // List all objects from their hashes
-        let keys = await this.s3.listObjects(this.modelName);
+        let keys = await Storm.s3().listObjects(this.modelName);
 
         // Clean all the indexes for this  model
-        await this.s3.zSetClear(this.modelName);
-        await this.s3.setClear(this.modelName);
+        await Storm.s3().zSetClear(this.modelName);
+        await Storm.s3().setClear(this.modelName);
 
         // Get basic indexes
         let fieldNames = Object.keys(this.schema);
@@ -511,7 +510,7 @@ class Indexing {
             //Logger.debug(`Deleting ${key} (${i+1} of ${keys.length})`);
 
             await Promise.map(fieldNames, async (fieldName) => {
-                let res = await this.s3.list(Indexing.getIndexName(this.modelName, fieldName));
+                let res = await Storm.s3().list(Indexing.getIndexName(this.modelName, fieldName));
                 for (let k=0; k<res.length; k+=1){
                     const item = res[k];
                     const dkey = `${Indexing.getIndexName(this.modelName, fieldName)}/${item}`;
@@ -521,16 +520,16 @@ class Indexing {
 
         }
 
-        await this.s3.delBatch(deleteBatch);
+        await Storm.s3().delBatch(deleteBatch);
 
 
         // TODO: Explore, to make faster...
-        // this.s3.aws.deleteAll(items);
+        // Storm.s3().aws.deleteAll(items);
         let maxId = -9999;
 
         await Promise.map(keys, async (key) => {                    
             
-            let data = await this.s3.getObject(key);
+            let data = await Storm.s3().getObject(key);
             
             if (data.id > maxId){
                 maxId = data.id;
@@ -540,7 +539,7 @@ class Indexing {
             for (let j=0; j<fieldNames.length; j+=1){
                 let fieldName = fieldNames[j];
                 this.id = data.id;
-                this.setIndexForField(fieldName, this.schema[fieldName], data[fieldName], null)
+                this.setIndexForField(fieldName, this.schema[fieldName], data[fieldName])
             }
 
         }, {concurrency: 10}); 
@@ -558,7 +557,7 @@ class Indexing {
      */
      async addExpires(expireTime: number){
         let expires = Math.round(Date.now() / 1000) + expireTime;
-        await this.s3.zSetAdd(`${this.modelName}/expires`, expires+'', this.id+'', this.id+'');
+        await Storm.s3().zSetAdd(`${this.modelName}/expires`, expires, this.id+'', this.id+'');
     }
     
     // ///////////////////////////////////////////////////////////////////////////////////////

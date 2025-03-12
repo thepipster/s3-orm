@@ -1,12 +1,11 @@
-
 "use strict";
 
-import Logger from "../utils/Logger";
+import Logger from "../../lib/utils/Logger";
 import Chance from "chance";
-import Storm from "./Storm"
-import {AwsEngine} from "../engines/AwsEngine"
-import ClientEngine from "../engines/ClientEngine";
-import DataTypes from "../types";
+import Storm from "../../lib/core/Storm";
+import {AwsEngine} from "../../lib/engines/AwsEngine";
+import ClientEngine from "../../lib/engines/ClientEngine";
+import DataTypes from "../../lib/types";
 import {uniq, map} from "lodash";
 
 const chance = new Chance();

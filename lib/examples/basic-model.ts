@@ -1,11 +1,19 @@
 import Logger from "../utils/Logger";
 import _ from "lodash";
 import Chance from "chance";
-import {Column, Entity, Model} from "../index";
+import {Column, Entity, Model, Query} from "../index";
+import { Storm } from "../core/Storm";
 
-//import { BaseEntity, Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+const chance = new Chance();
 
-///const chance = new Chance();
+Storm.connect({
+    bucket: process.env.AWS_BUCKET,
+    prefix: process.env.AWS_ROOT_FOLDER,
+    region: process.env.AWS_REGION,
+    rootUrl: process.env.AWS_CLOUDFRONT_URL,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_ACCESS_SECRET,
+});
 
 // uuid: { type: DataTypes.String, default: uuidv4}, 
 
@@ -13,7 +21,6 @@ import {Column, Entity, Model} from "../index";
 //const storm = new Storm();
 
 setTimeout( async ()=> {
-
 
     //const models = await storm.listModels();
     //Logger.debug(`Models = `, models);
@@ -33,35 +40,42 @@ setTimeout( async ()=> {
         @Column({type: 'float', index: true})
         score: number;
 
+        @Column({index: true})
+        fullName: string;
+
+        @Column({index: true})
+        lastIp: string;
+
+        @Column({index: true})
+        lastLogin: Date;
+
+        @Column({type: 'json', index: true})
+        preferences: object;
+
+        @Column({type: 'array', index: true})
+        tags: string[];
+
+        @Column({index: true, default: 'user' })
+        level: string;
+
+        @Column({index: true, default: 'active' })
+        status: string;
+
     }
-/*
-    const Model = storm.define('basic-model', {
-        email: {type: DataTypes.String, index: true},
-        age: {type: DataTypes.Integer, index: true},
-        score: {type: DataTypes.Float, index: true},
-        fullName: {type: DataTypes.String, index: true},
-        lastIp: DataTypes.String,
-        lastLogin: {type: DataTypes.Date, index: true},  
-        preferences: DataTypes.Json, 
-        tags: DataTypes.Array, 
-        level: { type: DataTypes.String, default: 'user', index: true },
-        status: { type: DataTypes.String, default: 'active' }
-    }, {expires: 100});
-    
+
     const No = 10;
-    let list = await s3.listObjects('basic-model');
+    let list:Person[] = await Person.find({});
 
     for (let i=0; i<list.length; i+=1){
-        let obj = await s3.getObject(list[i]);
-        Logger.debug(obj.email);
+        Logger.debug(list[i].email);
     }
 
     Logger.debug(`Found ${list.length} items`);
-
     
     if (list.length < No){
         for (let i=0; i<No; i+=1){
-            let tmp = new Model({
+
+            let tmp = new Person({
                 email: chance.email(),
                 age: (i==0) ? 20 : chance.age(),
                 score: (i==0) ? 50.56 : chance.floating({ min: 0, max: 100 }),
@@ -74,15 +88,35 @@ setTimeout( async ()=> {
                     moreStuff: chance.word()
                 }
             });
+
             try {
                 await tmp.save();
             }
             catch(err){
                 Logger.error(err.toString());
             }
-            Logger.debug(`[${Model._name()}] Saved with id = ${tmp.id}`, tmp.email);
+            Logger.debug(`[Person] Saved with id = ${tmp.id}`, tmp.email);
         }
     }
+    
+    // Test queries
+
+    //let qry = {fullName: 'bob'};
+    //let qry = {fullName: 'ob'};
+    //let qry = {age: 20};
+    //let qry = {age: {$gte: 19}};
+    //let qry = {fullName: 'bob', age: {$gte: 19}};
+    //let qry:Query = {score:{Op.$gte: 50.56}};
+    let qry:Query = {age: {$gte: 19}};
+    let list2:Person[] = await Person.find(qry);
+
+    Logger.debug(`Found ${list2.length} items`, list2);
+
+
+
+    /*
+
+
     
     let objectList = await Model.find({});
 

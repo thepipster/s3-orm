@@ -1,13 +1,12 @@
-
 "use strict";
 
-import Logger from "../utils/Logger";
+import Logger from "../../lib/utils/Logger";
 import Chance from "chance";
 import {random, map} from "lodash";
-import Indexing from "./Indexing.js";
-import DataTypes from "../types";
-import Storm from "./Storm.js";
-import {AwsEngine} from "../engines/AwsEngine.js";
+import Indexing from "../../lib/core/Indexing";
+import DataTypes from "../../lib/types";
+import Storm from "../../lib/core/Storm";
+import {AwsEngine} from "../../lib/engines/AwsEngine";
 
 const s3 = new AwsEngine({acl:'public-read'});
 const storm = new Storm(s3);

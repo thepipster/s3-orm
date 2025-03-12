@@ -5,6 +5,8 @@ import {Model} from "./core/Model";
 
 import {Column} from "./decorators/Column";
 import {Entity} from "./decorators/Entity";
+
+import { type Query } from "./types";
 /*
 import IdType from './lib/types/IdType';
 import UuidType from'./lib/types/UuidType';
@@ -34,6 +36,7 @@ export {
     Model,
     Column,
     Entity,
+    Query,
     //AwsEngine,
     //DataTypes,
     //Model,
