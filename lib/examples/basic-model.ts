@@ -63,16 +63,16 @@ setTimeout( async ()=> {
 
     }
 
-    /*
     const No = 10;
     let list:Person[] = await Person.find({});
 
-    for (let i=0; i<list.length; i+=1){
-        Logger.debug(list[i].email);
-    }
+    //for (let i=0; i<list.length; i+=1){
+    //    Logger.debug(list[i]);
+    //}
 
     Logger.debug(`Found ${list.length} items`);
-    
+
+    /*
     if (list.length < No){
         for (let i=0; i<No; i+=1){
 
@@ -92,6 +92,7 @@ setTimeout( async ()=> {
 
             try {
                 await tmp.save();
+                Logger.debug(`[Person] Saved with id = ${tmp.id}`, tmp);
             }
             catch(err){
                 Logger.error(err.toString());
@@ -99,7 +100,8 @@ setTimeout( async ()=> {
             Logger.debug(`[Person] Saved with id = ${tmp.id}`, tmp.email);
         }
     }
-    
+*/
+
     // Test queries
 
     //let qry = {fullName: 'bob'};
@@ -108,12 +110,14 @@ setTimeout( async ()=> {
     //let qry = {age: {$gte: 19}};
     //let qry = {fullName: 'bob', age: {$gte: 19}};
     //let qry:Query = {score:{Op.$gte: 50.56}};
-    let qry:Query = {age: {$gte: 19}};
-    let list2:Person[] = await Person.find(qry);
+    
+    
+    Logger.debug(`Age > 40`, await Person.find({
+        where: {age: {$gte: 40}},
+        order: 'ASC',
+        limit: 1
+    }));
 
-    Logger.debug(`Found ${list2.length} items`, list2);
-
-*/
 
     /*
 

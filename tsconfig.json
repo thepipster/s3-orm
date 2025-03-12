@@ -13,7 +13,7 @@
         "moduleResolution": "node",
         "noEmitOnError": true,
         "outDir": "./dist",
-        "rootDir": "./lib",
+        "rootDir": ".",
         "sourceMap": true,
         // "strict": true, // we should consider setting this to true
         "target": "es6",
@@ -23,10 +23,15 @@
         ],
         "types": [
             "node",
-            "jest"
+            "jest",
+            "chai",
+            "sinon"
         ]
     },
-    //"include": ["./lib/**/*"],
+    "include": [
+        "./lib/**/*",
+        "./test/**/*"
+    ],
     "exclude": [
         "coverage",
         "keys",

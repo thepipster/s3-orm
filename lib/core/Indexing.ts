@@ -11,6 +11,7 @@ import {
     uniq
 } from "lodash";
 import {Promise} from "bluebird";
+import {Query} from "../types";
 import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
 
 class Indexing {
@@ -285,10 +286,12 @@ class Indexing {
             return;
         }          
         const fieldDef: ColumnSchema = this._checkKey(fieldName);
-        val = fieldDef.toString(val);
-        // Stuff the id into the index as a meta value
+        const numericVal = Number(val);
+        if (isNaN(numericVal)) {
+            throw new Error(`Invalid numeric value for field ${fieldName}: ${val}`);
+        }
         try {
-            await Storm.s3().zSetAdd(Indexing.getIndexName(this.modelName, fieldName), val, this.id+'');
+            await Storm.s3().zSetAdd(Indexing.getIndexName(this.modelName, fieldName), numericVal, this.id.toString());
         }
         catch(err){
             Logger.error(err);
@@ -303,9 +306,12 @@ class Indexing {
             return;
         }          
         const fieldDef: ColumnSchema = this._checkKey(fieldName);
-        //val = fieldDef.toString(val);
+        const numericVal = Number(val);
+        if (isNaN(numericVal)) {
+            throw new Error(`Invalid numeric value for field ${fieldName}: ${val}`);
+        }
         try {
-            await Storm.s3().zSetRemove(Indexing.getIndexName(this.modelName, fieldName), val, this.id+'');
+            await Storm.s3().zSetRemove(Indexing.getIndexName(this.modelName, fieldName), numericVal, this.id.toString());
         }
         catch(err){
             Logger.error(err.toString());
@@ -321,14 +327,14 @@ class Indexing {
      * @param {object} query gt, gte, lt, lte, limit, order (ASC or DESC), scores
      * @returns 
      */
-    async searchNumeric(fieldName, query){
+    async searchNumeric(fieldName: string, query: Query){
         this._checkKey(fieldName);
         let res = await Storm.s3().zRange(Indexing.getIndexName(this.modelName, fieldName), query);
         if (!res){
             return [];
         }
         return map(res, (item)=>{
-            return parseInt(item);
+            return item.val;
         });
     }
 
