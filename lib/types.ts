@@ -14,20 +14,16 @@ export type EntityParams = {
     onUpdateOverride?: callback;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type callbackWithReturn = (...args: any[]) => any;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type callback = (...args: any[]) => any;
-
-// This is basically an extend version of ColumnParams, but is used 
-// internally only. This allows us to add a encode/decode method 
-// and other standard properties
-export type Field = ColumnParams & {
-    name: string,
-    isNumeric: boolean,
-    onUpdateOverride?: callback
+export type KeyValObject =  {
+    [key: string]: any;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type callbackWithReturn = (...args: any[]) => any;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type callback = (...args: any[]) => any;
+
 
 // bucket,region,accessKeyId,secretAccessKey
 

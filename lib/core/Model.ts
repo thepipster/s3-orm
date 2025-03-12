@@ -3,11 +3,11 @@ import {isUndefined, uniq, map, isEmpty, intersection, slice} from "lodash";
 import {Promise} from "bluebird";
 import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
 import QueryError from "../errors/QueryError";
-import {ModelMeta, type FieldMetas} from "../decorators/Column";
 import Indexing from "./Indexing";
 import {Storm} from "./Storm";
-import {cyan, blue, green, yellow} from "colorette";
-import {Op, Query, Field} from "../types";
+import {cyan, blue, green} from "colorette";
+import {Op, Query, type KeyValObject} from "../types";
+import { ModelMetaStore, type ColumnSchema, type ModelSchema } from "../decorators/ModelMetaStore";
 
 const debugMode = true;
 
@@ -20,20 +20,21 @@ export class Model {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
     
-    constructor(data?) {
+    constructor(data?: KeyValObject) {
 
         if (!data){
             data = {};
         }
 
         // Grab model meta data to get the column definitions
-        const model = ModelMeta[this.constructor.name];
+        //const model:ModelSchema = ModelMeta[this.constructor.name];
+        const model:ModelSchema = ModelMetaStore.get(this.constructor.name);
        
         if (model) {
             for (let key in model) {
 
-                var item = model[key];
-                let defn = (model[key].type) ? model[key].type : model[key];
+                var defn = model[key];
+                //let defn = (model[key].type) ? model[key].type : model[key];
 
                 try {
                     
@@ -42,16 +43,16 @@ export class Model {
                         this[key] = data[key];
                         //this[key] = BaseModelHelper.parseItem(model[key], data[key])
                     } 
-                    else if (!isUndefined(item.defaultValue)) {
-                        if (typeof item.defaultValue == "function") {
-                            this[key] = item.defaultValue();
+                    else if (!isUndefined(defn.default)) {
+                        if (typeof defn.default == "function") {
+                            this[key] = defn.default();
                         } 
                         else {
-                            this[key] = item.defaultValue;
+                            this[key] = defn.default;
                         }
                     } 
-                    else if (!isUndefined(item.default)) {
-                        this[key] = item.default;
+                    else if (!isUndefined(defn.default)) {
+                        this[key] = defn.default;
                     } 
                     else {
                         //Logger.error(`${key} is not defined: ${data[key]}`)
@@ -62,7 +63,7 @@ export class Model {
     
                 }
                 catch(err){
-                    Logger.error(item, data[key]);
+                    Logger.error(defn, data[key]);
                     Logger.error(`Error setting data in constructor`, err.toString());
                     process.exit(1);
                 }
@@ -79,10 +80,6 @@ export class Model {
 
     private static _name(): string{
         return this.name;
-    }
-
-    private static _schema(): FieldMetas {
-        return ModelMeta[this.name];
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -106,8 +103,7 @@ export class Model {
 
     static async resetIndex(){
         const modelName = this._name();
-        const model = this._schema();        
-        const indx = new Indexing(null, modelName, model, Storm.s3());
+        const indx = new Indexing(null, modelName);
         await indx.cleanIndices();
     }
 
@@ -125,10 +121,9 @@ export class Model {
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     static async max(fieldName){
-        const model = this._schema();
-        const type = (model[fieldName].type) ? model[fieldName].type : model[fieldName];
         const modelName = this._name();        
-        if (!type.isNumeric){
+        const model = ModelMetaStore.getColumn(modelName, fieldName);
+        if (!model.isNumeric){
             throw new QueryError(`${modelName}.${fieldName} is not numeric!`);
         }
         return await Storm.s3().zGetMax(`${modelName}/${fieldName}`, false);
@@ -162,10 +157,9 @@ export class Model {
             throw new Error(`Trying to remove document without an id!`);
         }
 
-        const s3 = Storm.s3();
         const modelName = this.constructor.name;
-        const model = ModelMeta[this.constructor.name];
-        const indx = new Indexing(this.id, modelName, model, s3);
+        const model: ModelSchema = ModelMetaStore.get(modelName);
+        const indx = new Indexing(this.id, modelName);
 
 
         for (let key in model) {
@@ -174,7 +168,7 @@ export class Model {
         }
         
         // Remove data
-        await s3.delObject(`${modelName}/${this.id}`);
+        await Storm.s3().delObject(`${modelName}/${this.id}`);
 
     }
 
@@ -205,9 +199,9 @@ export class Model {
     async save() {
 
         const modelName = this.constructor.name;
-        const model = ModelMeta[this.constructor.name];        
+        const model: ModelSchema = ModelMetaStore.get(modelName);
         const s3 = Storm.s3();
-        const indx = new Indexing(this.id, modelName, model, s3);
+        const indx = new Indexing(this.id, modelName);
         var oldValues = {};
 
         // If the id field is set (non-zero), then attempt
@@ -430,8 +424,7 @@ export class Model {
     static async getIds(query: Query) {
         
         const modelName: string = this._name();
-        const model: ColumnParams = this._schema();
-        const indx = new Indexing(null, modelName, model, Storm.s3());
+        const indx = new Indexing(null, modelName);
         var queryParts = [];
         var results = [];
 
@@ -462,22 +455,24 @@ export class Model {
         // Convert query into a flat array for easy parsing
         for (let key in query){
 
-            const defn = model[key];
+            const defn: ColumnSchema = ModelMetaStore.getColumn(modelName, key);
+            //const defn = model[key];
+
             const value = query[key];
             let qry: any = {key, type: 'basic', value};
 
-            if (defn.type.isNumeric) {
+            if (defn.isNumeric) {
                 qry.type = 'numeric';
                 qry.order = query.order;
                 // Handle MongoDB-style operators if present
                 if (typeof value === 'object' && !Array.isArray(value)) {
-                    const op = value as Op;
-                    if (op.$gt !== undefined || op.$gte !== undefined || op.$lt !== undefined || op.$lte !== undefined) {
-                        qry.value = op;
+                    //const op = value as Op;
+                    if (value.$gt !== undefined || value.$gte !== undefined || value.$lt !== undefined || value.$lte !== undefined) {
+                        qry.value = value;
                     }
                 }
             }
-            else if (defn.isUnique) {
+            else if (defn.unique) {
                 qry.type = 'unique';
             }
 
@@ -525,6 +520,7 @@ export class Model {
     /**
      * Generate random sample data for this class
      */
+    /*
     static generateMock() {
 
         const model = this._schema();        
@@ -545,5 +541,6 @@ export class Model {
         return mocked;
 
     }
+    */
     
 }

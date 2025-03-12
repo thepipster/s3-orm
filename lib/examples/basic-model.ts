@@ -63,6 +63,7 @@ setTimeout( async ()=> {
 
     }
 
+    /*
     const No = 10;
     let list:Person[] = await Person.find({});
 
@@ -112,7 +113,7 @@ setTimeout( async ()=> {
 
     Logger.debug(`Found ${list2.length} items`, list2);
 
-
+*/
 
     /*
 

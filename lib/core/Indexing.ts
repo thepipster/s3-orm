@@ -1,6 +1,7 @@
 import Logger from "../utils/Logger";
 import { EngineHelpers } from "./EngineHelpers";
 import { Storm } from "./Storm";
+import { ModelMetaStore, type ColumnSchema, type ModelSchema } from "../decorators/ModelMetaStore";
 import {
     isNull,
     isUndefined,
@@ -15,49 +16,50 @@ import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
 class Indexing {
 
     id: number = 0;
-    schema: any = {};
-    fields: string[] = [];
+    schema: ModelSchema = {};
     modelName: string = "";
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    constructor(id, modelName, schema, s3Engine){
+    constructor(id, modelName){
         this.id = id;
-        this.schema = schema;
-        this.fields = Object.keys(schema);
+        this.schema = ModelMetaStore.get(modelName);
         this.modelName = modelName;
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    _checkKey(key){
+    _checkKey(key: string): ColumnSchema {
         //Logger.error(key, this.schema.hasOwnProperty(key));
         //Logger.error(Object.keys(this.schema));
-        if (!(key in this.schema)){
-            //Logger.error((key in this.fields), this.fields)
+
+        if (!ModelMetaStore.hasColumn(this.modelName, key)){
             throw new Error(`The schema does not have a field called ${key}!`);            
         }
-        //const fieldDef = this.schema[key];
-        if (!this.schema[key].index && !this.schema[key].unique){
+
+        const fieldDef: ColumnSchema = ModelMetaStore.getColumn(this.modelName, key);
+
+        //const fieldDef: ColumnSchema = ModelMetaStore.getColumn(this.modelName, key);
+        if (!fieldDef.index && !fieldDef.unique){
             throw new Error(`The schema field ${key} does not have an index!`);            
         }
+
+        return fieldDef;
     }
 
-    _isNull(val){
+    _isNull(val: number | string){
         return isNull(val) || isUndefined(val) || val == '';
     }
 
-    stringify(key, val){
-        this._checkKey(key);
-        const fieldDef = this.schema[key];
-        return (fieldDef.type) ? fieldDef.type.encode(val) : fieldDef.encode(val);
-    }
+    //stringify(key: string, val: any){
+    //    const fieldDef: ColumnSchema = this._checkKey(key);
+    //    return fieldDef.toString(val);
+    //}
 
-    parse(key, val){
-        this._checkKey(key);
-        const fieldDef = this.schema[key];
-        return (fieldDef.type) ? fieldDef.type.parse(val) : fieldDef.parse(val);
-    }    
+    //parse(key: string, val: string){
+    //    const fieldDef: ColumnSchema = this._checkKey(key);
+    //    return fieldDef.fromString(val);
+    //}    
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -69,13 +71,13 @@ class Indexing {
      */
     async isMemberUniques(fieldName, val){
         
-        this._checkKey(fieldName);
-        
         if (this._isNull(val)){
             throw new Error(`The value must be a string!`);
         }
-        
-        val = this.stringify(fieldName, val);
+
+        const fieldDef: ColumnSchema = this._checkKey(fieldName);                
+        val = fieldDef.toString(val);
+
         const key = Indexing.getIndexName(this.modelName, fieldName);
 
         let alreadyExistsId = await Storm.s3().setIsMember(key, val);
@@ -91,14 +93,14 @@ class Indexing {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async clearUniques(fieldName){
+    async clearUniques(fieldName: string){
         this._checkKey(fieldName);
         return await Storm.s3().setClear(Indexing.getIndexName(this.modelName, fieldName));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async getUniques(fieldName){
+    async getUniques(fieldName: string){
         this._checkKey(fieldName);
         return await Storm.s3().setMembers(Indexing.getIndexName(this.modelName, fieldName));
     }
@@ -106,8 +108,8 @@ class Indexing {
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async removeUnique(fieldName, val){
-        this._checkKey(fieldName);
-        val = this.stringify(fieldName, val);
+        const fieldDef: ColumnSchema = this._checkKey(fieldName);
+        val = fieldDef.toString(val);
         await Storm.s3().setRemove(Indexing.getIndexName(this.modelName, fieldName), val);
     }
 
@@ -119,9 +121,9 @@ class Indexing {
             throw new Error(`Can't add an empty non-string value!`);
         }
 
-        this._checkKey(fieldName);
+        const fieldDef: ColumnSchema = this._checkKey(fieldName);
 
-        val = this.stringify(fieldName, val);
+        val = fieldDef.toString(val); 
         const key = Indexing.getIndexName(this.modelName, fieldName);
 
         let alreadyExistsId = await Storm.s3().setIsMember(key, val);
@@ -148,8 +150,8 @@ class Indexing {
         if (this._isNull(val)){
             return;
         }       
-        this._checkKey(fieldName); 
-        val = this.stringify(fieldName, val);
+        const fieldDef: ColumnSchema = this._checkKey(fieldName); 
+        val = fieldDef.toString(val);
         const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
         await Storm.s3().del(key);  
     }
@@ -165,8 +167,8 @@ class Indexing {
         if (this._isNull(val)){
             return;
         }        
-        this._checkKey(fieldName);        
-        val = this.stringify(fieldName, val);
+        const fieldDef: ColumnSchema = this._checkKey(fieldName);        
+        val = fieldDef.toString(val);
         const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
         await Storm.s3().set(key, val);  
     }
@@ -179,13 +181,14 @@ class Indexing {
      * @returns 
      */
     async list(fieldName){                        
-        this._checkKey(fieldName);
+        const fieldDef: ColumnSchema = this._checkKey(fieldName);
         let res = await Storm.s3().list(Indexing.getIndexName(this.modelName, fieldName));
         return map(res, (item)=>{
             let parts = item.split('###');
             const decodedValue = EngineHelpers.decode(parts[0]);
             return {
-                val: this.parse(fieldName, decodedValue), 
+                //val: this.parse(fieldName, decodedValue), 
+                val: fieldDef.fromString(decodedValue),
                 id: parseInt(parts[1])
             }            
         });
@@ -200,7 +203,7 @@ class Indexing {
      */
     async clear(fieldName){
 
-        this._checkKey(fieldName);     
+        const fieldDef: ColumnSchema = this._checkKey(fieldName);     
         let deleteBatch = [];
         let res = await this.list(fieldName);
                 
@@ -224,7 +227,7 @@ class Indexing {
      */
     async search(fieldName, searchVal){        
         
-        this._checkKey(fieldName);
+        const fieldDef: ColumnSchema = this._checkKey(fieldName);
         /*
         function equalsIgnoringCase(text, other) {
             if (!text){
@@ -236,7 +239,7 @@ class Indexing {
         }
         */
 
-        searchVal = this.stringify(fieldName, searchVal);
+        searchVal = fieldDef.toString(searchVal);
 
         if (!searchVal || typeof searchVal != 'string'){
             Logger.warn(`Indexing.sarch() ${fieldName} = ${searchVal} is not a string`);
@@ -281,8 +284,8 @@ class Indexing {
         if (this._isNull(val)){
             return;
         }          
-        this._checkKey(fieldName);
-        val = this.stringify(fieldName, val);
+        const fieldDef: ColumnSchema = this._checkKey(fieldName);
+        val = fieldDef.toString(val);
         // Stuff the id into the index as a meta value
         try {
             await Storm.s3().zSetAdd(Indexing.getIndexName(this.modelName, fieldName), val, this.id+'');
@@ -299,8 +302,8 @@ class Indexing {
         if (this._isNull(val)){
             return;
         }          
-        this._checkKey(fieldName);
-        val = this.stringify(fieldName, val);
+        const fieldDef: ColumnSchema = this._checkKey(fieldName);
+        //val = fieldDef.toString(val);
         try {
             await Storm.s3().zSetRemove(Indexing.getIndexName(this.modelName, fieldName), val, this.id+'');
         }
@@ -368,7 +371,7 @@ class Indexing {
 
     async removeIndexForField(key, val){
         
-        const fieldDef = this.schema[key];
+        const fieldDef: ColumnSchema = ModelMetaStore.getColumn(this.modelName, key);
 
         // If this field is not indexed, just return now
         if (!fieldDef.index && !fieldDef.unique){
@@ -398,7 +401,7 @@ class Indexing {
                 await this.removeUnique(key, val);
             }
                             
-            if (fieldDef.type.isNumeric) {
+            if (fieldDef.isNumeric) {
                 await this.removeNumeric(key, val);
             }
             else {
@@ -427,7 +430,7 @@ class Indexing {
 
     async setIndexForField(key: string, val: any, oldVal: any){
         
-        const fieldDef = this.schema[key];
+        const fieldDef: ColumnSchema = ModelMetaStore.getColumn(this.modelName, key);
 
         // If this field is not indexed, just return now
         if (!fieldDef.index && !fieldDef.unique){
@@ -472,7 +475,7 @@ class Indexing {
             await this.addUnique(key, val);
         }                
 
-        if (fieldDef.type.isNumeric && !isNull) {
+        if (fieldDef.isNumeric && !isNull) {
             await this.addNumeric(key, val);
         }
         else {
