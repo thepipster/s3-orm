@@ -28,48 +28,69 @@ npm install s3-orm
 
 A schema object is required when defining a model. This is a basic object with key/values where the value is the field defintion. A field definition can consist simply of the field type, or be an object with a `type` key and other optional values set such as an `index`. Here is an example of such a schema;
 
-```js
-const schema =  {
-    email: {type: DataTypes.String, unique: true},
-    age: {type: DataTypes.Integer, index: true},
-    score: {type: DataTypes.Float, index: true},
-    fullName: {type: DataTypes.String, index: true},
-    lastIp: DataTypes.String,
-    lastLogin: {type: DataTypes.Date, index: true},  
-    preferences: DataTypes.Json, 
-    tags: DataTypes.Array, 
-    level: { type: DataTypes.String, default: 'user', index: true },
-    status: { type: DataTypes.String, default: 'active' }
-}
+```ts
+    @Entity()
+    class Person extends Model {
+
+        @Column({unique: true})
+        email: string;
+
+        @Column({type: 'integer', index: true})
+        age: number;
+
+        @Column({type: 'float', index: true})
+        score: number;
+
+        @Column({index: true})
+        fullName: string;
+
+        @Column({index: true})
+        lastIp: string;
+
+        @Column({index: true})
+        lastLogin: Date;
+
+        @Column({type: 'json'})
+        preferences: object;
+
+        @Column({type: 'array'})
+        tags: string[];
+
+        @Column({default: 'user', index: true})
+        level: string;
+
+        @Column({default: 'active', index: true})
+        status: string;
+
+    }
+
 ```
 
-### Field definition
+### Model definition (`@Entity` decorator)
 
-A field can have the following keys
+Model definitions are established by using the `@Entity` decorator, with the following options;
 
 | name | Description |
 | ---- | ----------- |
-| type | The field data type, such as `DataTypes.Number` |
+| expires | Automatically delete any instances of this Model after x seconds |
+| timestamps | Default is false. If set to true, automatically adds and updates `created` and `modified` Date columns. |
+| unique | Sets an unique for a field, i.e. enforces uniqueness for this field and enables you to query on it  |
+| default | Specify a default value for this field, this can also be a function |
+| onPreUpdate | A function that is called *before* document is saved, the field value is set by the output of this function during the save |
+| onPostUpdate | A function that is called *after* document is saved, the field value is set by the output of this function during the save |
+
+
+### Column definition (`@Column` decorator)
+
+Column definitions are established by using the `@Column` decorator, with the following options;
+
+| name | Description |
+| ---- | ----------- |
+| type | For finer grain control you can be more specific about the data type, options include 'integer', 'float', 'json' or 'array' |
 | index | Sets an index for a field, i.e. enables you to query on this field |
 | unique | Sets an unique for a field, i.e. enforces uniqueness for this field and enables you to query on it  |
 | default | Specify a default value for this field, this can also be a function |
-| defaultValue | Same as default |
 | onUpdateOverride | A function that is called when the document is saved, the field value is set by the output of this function during the save |
-
-#### Field types
-
-```js
-DataTypes.Id    // Integer, id field, this is automatically added to all models
-DataTypes.Uuid    // String, a uuid v4 field, will generate a uuid automically if no value set during a save
-DataTypes.Json    // Json object
-DataTypes.Float    // Float
-DataTypes.Number    // Integer
-DataTypes.Integer    // Integer
-DataTypes.String    // String
-DataTypes.Boolean    // Boolean
-DataTypes.Array    // Simple array of basic types
-DataTypes.Date    // Date
-```
 
 ### Queries
 
@@ -134,53 +155,66 @@ Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additio
 
 | name | Description |
 | ---- | ----------- |
-| constructor(config) | Create a new instance of the s3 ORM ("storm"), passing in config options |
-| define(name, schema, options)) | A factory method to create and register a model class |
+| connect(config) | Create a new instance of the s3 ORM ("storm"), passing in config options |
 | listModels() | Give a list of all the models currently registered |
 
 ## Basic usage
 
-```js
+```ts
 
-const {Storm, DataTypes} = require('s3-orm');
+const {Storm, Entity, Column} = require('s3-orm');
 
-// You can use in a read-only way with an anonymouse user (useful for browsers)
-const config = {
-    prefix: 's3orm/',
-    bucket: 'theva-test-assets'
-};
-
-// OR, for server-side you can use the AWS S3 credentials for full read/write access
-const config = {
-    prefix: 's3orm/',
+Storm.connect({
     bucket: process.env.AWS_BUCKET,
+    prefix: 's3orm/',
+    region: process.env.AWS_REGION,
+    rootUrl: process.env.AWS_CLOUDFRONT_URL,
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-};
+    secretAccessKey: process.env.AWS_ACCESS_SECRET,
+});
+
 
 // Create an instance of the storm ORM with this engine
 const storm = new Storm(config);
 
 // Create a schema
-const schema =  {
-    email: {type: DataTypes.String, unique: true},
-    age: {type: DataTypes.Integer, index: true},
-    score: {type: DataTypes.Float, index: true},
-    fullName: {type: DataTypes.String, index: true},
-    lastIp: DataTypes.String,
-    lastLogin: {type: DataTypes.Date, index: true},  
-    preferences: DataTypes.Json, 
-    tags: DataTypes.Array, 
-    level: { type: DataTypes.String, default: 'user', index: true },
-    status: { type: DataTypes.String, default: 'active' }
+@Entity()
+class Person extends Model {
+
+    @Column({unique: true})
+    email: string;
+
+    @Column({type: 'integer', index: true})
+    age: number;
+
+    @Column({type: 'float', index: true})
+    score: number;
+
+    @Column({index: true})
+    fullName: string;
+
+    @Column({index: true})
+    lastIp: string;
+
+    @Column({index: true})
+    lastLogin: Date;
+
+    @Column({type: 'json'})
+    preferences: object;
+
+    @Column({type: 'array'})
+    tags: string[];
+
+    @Column({default: 'user', index: true})
+    level: string;
+
+    @Column({default: 'active', index: true})
+    status: string;
+
 }
 
-// Use the factory method to create the Person class using 
-// this schema and any options you want to set
-const Person = storm.define('person', schema, {expires: 100});
-
-// You can use the generateMock method to create random data for testing
-let pete = new Model();
+// Now you can create a document using this schema (model)
+let pete = new Person();
 pete.fullName = 'Pete The Cat';
 pete.age = 12;
 
@@ -188,14 +222,22 @@ pete.age = 12;
 await pete.save();
 
 // You can also use the generateMock method to create random data for testing
-let randomData = Model.generateMock();
+let randomData = Person.generateMock();
 let rando = new Person(randomData);
 await rando.save();
 
 // Examples of some basic queries
-let people = await Person.find({age: {$gte: 12}});
-let people = await Person.find({fullName: 'Cat'});
+let people = await Person.find({
+    where: {
+        age: {$gte: 12}
+    }
+});
 
+let people = await Person.find({
+    where: {
+        fullName: 'Cat'
+    }
+});
 
 ```
 

@@ -1,5 +1,5 @@
 export type ColumnParams = {
-    type?: string;
+    type?: 'boolean' | 'text' | 'date' | 'integer' | 'float' | 'json' | 'array';
     index?: boolean;
     unique?: boolean;
     default?: any;

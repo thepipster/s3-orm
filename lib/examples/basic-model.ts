@@ -31,7 +31,7 @@ setTimeout( async ()=> {
         //@PrimaryGeneratedColumn()
         //id: number;
 
-        @Column({index: true})
+        @Column({unique: true})
         email: string;
 
         @Column({type: 'integer', index: true})
@@ -49,16 +49,16 @@ setTimeout( async ()=> {
         @Column({index: true})
         lastLogin: Date;
 
-        @Column({type: 'json', index: true})
+        @Column({type: 'json'})
         preferences: object;
 
-        @Column({type: 'array', index: true})
+        @Column({type: 'array'})
         tags: string[];
 
-        @Column({index: true, default: 'user' })
+        @Column({default: 'user', index: true})
         level: string;
 
-        @Column({index: true, default: 'active' })
+        @Column({default: 'active', index: true})
         status: string;
 
     }
