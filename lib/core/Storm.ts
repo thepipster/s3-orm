@@ -12,7 +12,7 @@ dotenv.config();
  */
 export class Storm {
 
-    static debug: boolean = true;
+    static debug: boolean = false;
     static engine: AwsEngine;
 
     static connect(opts: S3Options){

@@ -4,7 +4,7 @@ import {Model} from "../core/Model";
 import Logger from "../utils/Logger";
 import {cyan, blue} from "colorette";
 import { Storm } from "../core/Storm";
-import {type ColumnSchema} from "./ModelMetaStore";
+import {type ColumnSchema, ModelMetaStore} from "./ModelMetaStore";
 
 //import BaseType from "../types/BaseType";
 //import BooleanType from "../types/BooleanType";
@@ -15,13 +15,15 @@ export function Column(params?: ColumnParams)
 {
     return function (target: Model, propertyKey) {
         
-        const t = Reflect.getMetadata("design:type", target, propertyKey);
+        //const t = Reflect.getMetadata("design:type", target, propertyKey);
         const className = target.constructor.name;
+
+        //Logger.debug(className, propertyKey, params);
 
         // Handle case where we have no type passed in
         // and we look up type from member variable type
-        const type = (t.type) ? t.type : typeof target[propertyKey];
-
+        const type = (params.type) ? params.type : typeof target[propertyKey];
+        
         let isNumeric = false;
         if (type == 'number' || type == 'integer' || type == 'float'){
             isNumeric= true;
@@ -29,70 +31,29 @@ export function Column(params?: ColumnParams)
 
         const col:ColumnSchema = {
             name: propertyKey.trim(),
-            isNumeric,  
-            index: (t.index) ? t.index : null,       
-            unique: (t.unique) ? t.unique : null,       
-            default: (t.default) ? t.default : null,       
+            type,
+            isNumeric,
+            index: params?.index || false,
+            unique: params?.unique || false,
+            default: params?.default,
             toString: (val: any): string => {
-                return JSON.stringify(val);
+                if (val === null || val === undefined) return '';
+                if (type === 'json' || type === 'array') return JSON.stringify(val);
+                if (val instanceof Date) return val.toISOString();
+                return String(val);
             },
             fromString: (val: string): any => {
-                return JSON.parse(val);
+                if (!val) return null;
+                if (type === 'json' || type === 'array') return JSON.parse(val);
+                if (type === 'date') return new Date(val);
+                if (isNumeric) return Number(val);
+                return val;
             }
         };
 
-
-        if (Storm.debug){
-            Logger.debug(`[${cyan(className)}] ${blue(propertyKey)}`, t);        
-        }
-/*
-        const field: ColumnSchema = {
-            name: propertyKey.trim(),
-            type: t.name.toLowerCase(),
-            isNumeric: false      
-        };
-
-        if (params && params.default){
-            field.default = params.default;
-        }
+        // Register the column in ModelMetaStore
+        ModelMetaStore.addColumn(className, col);
 
 
-
-        if (!ModelMeta[className]){
-            ModelMeta[className] = new Map<string, Field>();
-        }
-
-        if (field.type == 'number' || field.type == 'integer' || field.type == 'float'){
-            field.isNumeric = true;
-        }
-*/
-        // TODO: Add in support for timestamp fields
-        /*
-        if (!extendedSchema['created']){
-            extendedSchema.created = {
-                type: DataTypes.Date,
-                index: true,
-                defaultValue: function () {
-                    return new Date();
-                },
-            };    
-        }
-
-        if (!extendedSchema['modified']){
-            extendedSchema.modified = {
-                type: DataTypes.Date,
-                onUpdateOverride: function () {
-                    return new Date();
-                },
-            };    
-        }
-        */
-/*
-        ModelMeta[className].set(field.name, field);
-
-        ModelMeta[className].forEach(function(fieldInfo, name){
-            Logger.debug(`[${cyan(className)}] ${blue(name)}`, fieldInfo);        
-        });
-        */
     };
 }

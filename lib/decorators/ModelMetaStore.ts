@@ -2,7 +2,7 @@ import {type ColumnParams} from "../types";
 import { Storm } from "../core/Storm";
 import Logger from "../utils/Logger";
 import {cyan, blue} from "colorette";
-import {type callback} from "../types";
+import {type callback, type EntityParams} from "../types";
 import { fromString } from "uuidv4";
 
 //type ModelSchema = Map<string, ColumnSchema>;
@@ -26,6 +26,11 @@ export type ModelSchema = {
 export class ModelMetaStore {
 
     private static store: Map<string, ModelSchema> = new Map();
+    private static entityMetas: Map<string, EntityParams> = new Map();
+
+    static addColumnMeta(modelName: string, meta: EntityParams){
+        this.entityMetas.set(modelName, meta);
+    }
 
     /**
      * Get the schema (meta data) for the given column and model
@@ -75,7 +80,7 @@ export class ModelMetaStore {
 
     static addColumn(modelName: string, meta: ColumnSchema){
 
-        if (this.store.has(modelName)){
+        if (!this.store.has(modelName)){
             this.store.set(modelName, {});
         }
 

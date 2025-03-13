@@ -6,7 +6,7 @@ import QueryError from "../errors/QueryError";
 import Indexing from "./Indexing";
 import {Storm} from "./Storm";
 import {cyan, blue, green} from "colorette";
-import {Op, Query, type KeyValObject} from "../types";
+import {Op, Query, QueryOptions, type KeyValObject} from "../types";
 import { ModelMetaStore, type ColumnSchema, type ModelSchema } from "../decorators/ModelMetaStore";
 
 const debugMode = true;
@@ -55,11 +55,13 @@ export class Model {
                         this[key] = defn.default;
                     } 
                     else {
-                        //Logger.error(`${key} is not defined: ${data[key]}`)
+                        Logger.error(`${key} is not defined: ${data[key]}`)
                         this[key] = null;
                     }
     
-                    Logger.info(`${cyan(key)} of type ${blue(defn.name)} = ${green(data[key])} (${typeof data[key]})`);
+                    if (Storm.debug) {
+                        Logger.debug(`[${this.constructor.name}.constructor] ${cyan(key)} of type ${blue(defn.name)} = ${green(data[key])} (${typeof data[key]})`);
+                    }
     
                 }
                 catch(err){
@@ -113,14 +115,14 @@ export class Model {
      * Return true if a model exists with this id
      * @param {string} id
      */
-    static async exists(id) {
+    static async exists(id: number) {
         const modelName = this._name();        
         return await Storm.s3().hasObject(`${modelName}/${id}`);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async max(fieldName){
+    static async max(fieldName: string){
         const modelName = this._name();        
         const model = ModelMetaStore.getColumn(modelName, fieldName);
         if (!model.isNumeric){
@@ -131,9 +133,16 @@ export class Model {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async count(query) {
+    static async count(query: QueryOptions) {
         let docIds = await this.getIds(query);
         return docIds.length;
+    }
+
+    private static normalizeQuery(query: Query | QueryOptions): QueryOptions {
+        if ('where' in query || 'order' in query || 'limit' in query || 'offset' in query || 'scores' in query) {
+            return query as QueryOptions;
+        }
+        return { where: query as Query };
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +187,7 @@ export class Model {
      * Delete a document from redis, and clear it out from any indices
      * @param {string} id The id of the document to delete
      */
-    static async remove(id) {
+    static async remove(id: number) {
         //Logger.info(`Removing ${id}`)
 
         if (!id) {
@@ -337,7 +346,7 @@ export class Model {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async findOne(query: Query) {
+    static async findOne(query: QueryOptions) {
         try {
             let docIds = await this.getIds(query);
 
@@ -376,7 +385,7 @@ export class Model {
      * @param {*} query The query, e.g. {name:'fred'} or {name:'fred', age:25}. Note that
      * query keys must be indexed fields in the schema.
      */
-    static async find(query: Query) {
+    static async find(query: QueryOptions) {
 
         try {
             
@@ -417,16 +426,20 @@ export class Model {
      * Query for all documents where the score is les than 50.56
      *   qry = {score: {$lt: 50.56}};
      * 
-     * @param {Query} query Support for MongoDB-style operators ($gt, $gte, $lt, $lte, etc) 
+     * @param {QueryOptions} query Support for MongoDB-style operators ($gt, $gte, $lt, $lte, etc) 
      * and support for; limit, offset, order (ASC or DESC)
      * @returns 
      */
-    static async getIds(query: Query) {
+    static async getIds(query: QueryOptions) {
         
         const modelName: string = this._name();
         const indx = new Indexing(null, modelName);
         var queryParts = [];
         var results = [];
+
+        if (!query.where) {
+            query.where = {};
+        }
 
         // Set up any default options
         if (!query.order) {
@@ -440,7 +453,8 @@ export class Model {
         //}
 
         // Deal with the special case of an empty query, which means return everything!
-        if (isEmpty(query)){
+        if (isEmpty(query.where)){
+
             const list = await Storm.s3().listObjects(modelName);
             
             for (let i=0; i<list.length; i+=1){
@@ -453,23 +467,27 @@ export class Model {
         }
 
         // Convert query into a flat array for easy parsing
-        for (let key in query){
+        for (let key in query.where){
 
             const defn: ColumnSchema = ModelMetaStore.getColumn(modelName, key);
-            //const defn = model[key];
+            const keyVal = query.where[key];
+            let qry: any = {key, type: 'basic', value: keyVal};
 
-            const value = query[key];
-            let qry: any = {key, type: 'basic', value};
+            Logger.debug(key, defn, keyVal);
 
             if (defn.isNumeric) {
                 qry.type = 'numeric';
-                qry.order = query.order;
                 // Handle MongoDB-style operators if present
-                if (typeof value === 'object' && !Array.isArray(value)) {
-                    //const op = value as Op;
-                    if (value.$gt !== undefined || value.$gte !== undefined || value.$lt !== undefined || value.$lte !== undefined) {
-                        qry.value = value;
+                if (typeof keyVal === 'object' && !Array.isArray(keyVal)) {
+                    // For numeric fields, if no range operators are provided, treat the value as an exact match
+                    if (keyVal.$gt !== undefined || keyVal.$gte !== undefined || keyVal.$lt !== undefined || keyVal.$lte !== undefined) {
+                        qry.value = keyVal;
+                    } else {
+                        qry.value = { $gte: keyVal, $lte: keyVal };
                     }
+                } else {
+                    // If keyVal is a direct number, treat it as an exact match
+                    qry.value = { $gte: keyVal, $lte: keyVal };
                 }
             }
             else if (defn.unique) {

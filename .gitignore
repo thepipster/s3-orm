@@ -2,6 +2,7 @@
 **/.DS_Store
 node_modules
 /certs
+/s3test
 
 # env files
 .env

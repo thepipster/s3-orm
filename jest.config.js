@@ -8,6 +8,9 @@ module.exports = {
       tsconfig: 'tsconfig.test.json'
     }]
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(chai)/)'
+  ],
   testMatch: ['**/test/**/*.test.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/lib/$1'

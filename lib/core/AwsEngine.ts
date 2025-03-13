@@ -337,21 +337,22 @@ export class AwsEngine {
      * @returns 
      */
     async zRange(setName: string, opts: Query): Promise<Array<{score: number, val: string}>> {
-        //Logger.debug(`Entering zRange, setName = ${setName}`, opts);
+        
+        Logger.debug(`Entering zRange, setName = ${setName}`, opts);
 
         let res = await this.zSetMembers(setName, true) as Array<{score: number, val: string}>;
     
-        if (!opts.$lt && !opts.$lte && !opts.$gt && !opts.$gte){
+        if (!opts['$lt'] && !opts['$lte'] && !opts['$gt'] && !opts['$gte']){
             throw new Error(`You need to set at least one range specifier ($lt, $lte, $gt, $gte)!`);
         }
 
         let items = [];
 
         function isNull(val: any): boolean {
-            if (val === 0){
+            if (val === 0) {
                 return false;
             }
-            return isNull(val) || isUndefined(val);
+            return val === null || val === undefined;
         }
 
         for (let i=0; i<res.length; i+=1){
@@ -360,24 +361,24 @@ export class AwsEngine {
             let lowerFlag = false;
             let upperFlag = false;
 
-            if (isNull(opts.$lt) && isNull(opts.$lte)){
+            if (isNull(opts['$lt']) && isNull(opts['$lte'])){
                 lowerFlag = true;
             }
-            if (isNull(opts.$gt) && isNull(opts.$gte)){
+            if (isNull(opts['$gt']) && isNull(opts['$gte'])){
                 upperFlag = true;
             }
 
-            if (!isNull(opts.$gt) && item.score > opts.$gt){
+            if (!isNull(opts['$gt']) && item.score > opts['$gt']){
                 upperFlag = true;
             }
-            else if (!isNull(opts.$gte) && item.score >= opts.$gte){
+            else if (!isNull(opts['$gte']) && item.score >= opts['$gte']){
                 upperFlag = true;
             }
 
-            if (!isNull(opts.$lt) && item.score < opts.$lt){
+            if (!isNull(opts['$lt']) && item.score < opts['$lt']){
                 lowerFlag = true;
             }
-            else if (!isNull(opts.$lte) && item.score <= opts.$lte){
+            else if (!isNull(opts['$lte']) && item.score <= opts['$lte']){
                 lowerFlag = true;
             }
 
@@ -386,10 +387,10 @@ export class AwsEngine {
                 score = ${item.score}, 
                 lowerFlag = ${lowerFlag}, 
                 upperFlag = ${upperFlag},                
-                $lt = ${(isNull(opts.$lt)) ? 'null' : opts.$lt},
-                $lte = ${(isNull(opts.$lte)) ? 'null' : opts.$lte},
-                $gt = ${(isNull(opts.$gt)) ? 'null' : opts.$gt},
-                $gte = ${(isNull(opts.$gte)) ? 'null' : opts.$gte},
+                $lt = ${(isNull(opts['$lt'])) ? 'null' : opts['$lt']},
+                $lte = ${(isNull(opts['$lte'])) ? 'null' : opts['$lte']},
+                $gt = ${(isNull(opts['$gt'])) ? 'null' : opts['$gt']},
+                $gte = ${(isNull(opts['$gte'])) ? 'null' : opts['$gte']},
                 `);
                 */
 
@@ -400,6 +401,7 @@ export class AwsEngine {
             }
         }
         
+        /*
         if (opts.order && opts.order == 'DESC'){
             items = reverse(items);
         }
@@ -407,6 +409,7 @@ export class AwsEngine {
         if (opts.limit){
             items = slice(items, 0, opts.limit);
         }
+            */
 
         return items;
     }
