@@ -7,7 +7,6 @@ import {
     GetObjectCommand,
     GetObjectAclCommand,
     PutObjectAclCommand,
-    PutObjectCommand,
     DeleteObjectCommand,
     DeleteObjectsCommand,
     _Object as S3Object,
@@ -15,6 +14,7 @@ import {
     ObjectIdentifier,
     ObjectCannedACL
 } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { Readable } from 'stream';
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import Logger from "../utils/Logger";
@@ -218,15 +218,18 @@ export class S3Helper {
         contentType = contentType || 'text/plain';
         key = key.replace(/^\/|\/$/g, '');
 
-        const command = new PutObjectCommand({
-            Bucket: this.opts.bucket,
-            Key: key,
-            Body: content,
-            ContentType: contentType,
-            ACL: this.opts.acl as ObjectCannedACL
+        const upload = new Upload({
+            client: this.s3,
+            params: {
+                Bucket: this.opts.bucket,
+                Key: key,
+                Body: content,
+                ContentType: contentType,
+                ACL: this.opts.acl as ObjectCannedACL
+            }
         });
 
-        await this._write(command);
+        await upload.done();
         return this.getUrl(key);
     }
 

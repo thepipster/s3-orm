@@ -1,5 +1,7 @@
 //import callsites from 'callsites';
-import color from "colorts"; // https://shaselle.github.io/colors.ts/
+//const { default: callsites } = await import('callsites');
+import {callsites} from "./callsites";
+import {cyan, blue, green, gray, bold} from "colorette";
 import * as path from "path";
 import * as util from "util";
 import * as winston from "winston";
@@ -43,7 +45,7 @@ const Logger = {
         });
     },
 
-    /*
+    
     __getStackTrace(stackObj) {
 
         let trace_str = "";
@@ -59,12 +61,12 @@ const Logger = {
                     let fname = site.getFileName();
                     fname = fname ? path.basename(fname) : fname;
 
-                    if (fname == "Logger.js") {
+                    if (fname == "Logger.js" || fname == "Logger.ts") {
                         startDepth = depth + 1;
                     }
 
                     if (depth == startDepth) {
-                        trace_str += `{from ${color(fname).bold}:${no}`;
+                        trace_str += `{from ${bold(fname)}:${no}`;
                     }
                     else if (no && depth > startDepth && depth <= startDepth + maxDepth) {
                         trace_str += `, ${fname}:${no}`;
@@ -79,9 +81,9 @@ const Logger = {
             }
         }
 
-        return color(trace_str).gray;
+        return gray(trace_str);
     },
-    */
+    
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     __serialize(...args: any[]): string {
@@ -136,45 +138,45 @@ const Logger = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     log(...args: any[]): void {
         let str = Logger.__serialize(...args);
-        //if (this.showStackTrace) {
-        //    str += Logger.__getStackTrace(callsites());
-        //}
+        if (this.showStackTrace) {
+            str += Logger.__getStackTrace(callsites());
+        }
         Logger._logger.log.apply(Logger._logger, ["log", str]);
     },
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     debug(...args: any): void {
         let str = Logger.__serialize(...args);
-        //if (this.showStackTrace) {
-        //    str += Logger.__getStackTrace(callsites());
-        //}
+        if (this.showStackTrace) {
+            str += Logger.__getStackTrace(callsites());
+        }
         Logger._logger.log.apply(Logger._logger, ["debug", str]);
     },
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     info(...args: any[]): void {
         let str = Logger.__serialize(...args);
-        //if (this.showStackTrace) {
-        //    str += Logger.__getStackTrace(callsites());
-        //}
+        if (this.showStackTrace) {
+            str += Logger.__getStackTrace(callsites());
+        }
         Logger._logger.log.apply(Logger._logger, ["info", str]);
     },
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     warn(...args: any[]): void {
         let str = Logger.__serialize(...args);
-        //if (this.showStackTrace) {
-        //    str += Logger.__getStackTrace(callsites());
-        //}
+        if (this.showStackTrace) {
+            str += Logger.__getStackTrace(callsites());
+        }
         Logger._logger.log.apply(Logger._logger, ["warn", str]);
     },
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     error(...args: any[]): void {
         let str = Logger.__serialize(...args);
-        //if (this.showStackTrace) {
-        //    str += Logger.__getStackTrace(callsites());
-        //}
+        if (this.showStackTrace) {
+            str += Logger.__getStackTrace(callsites());
+        }
         Logger._logger.log.apply(Logger._logger, ["error", str]);
     },
 

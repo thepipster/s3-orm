@@ -1,38 +1,20 @@
-import uuidv4 from 'uuid/v4';
-import BaseType from "./BaseType";
+//import {uniqueId} from "lodash";
+import Chance from "chance";
+const chance = new Chance();
 
-class UuidType extends BaseType {
+export class UuidType {
     
-    constructor(){
-        super('uuid', false);
-    }    
-    
-    mock(){ 
-        return this.generateToken();
+    static mock(){ 
+        return chance.guid({version: 4});
     }
     
-    static encode(val: any): string { 
+    static encode(val: any): string{   
+        if (val === null || val === undefined) return '';
+        return String(val);
     }
 
-    static decode(val: string) {    
+    static decode(val: any){         
+        return val;
     }
 
-    /**
-     * Generate a token for use as a secret key, nonce etc.
-     * @param length (optional) specify length, defaults to 24;
-     * @return {string}
-     */
-     generateToken(length=24) {
-
-        let token = uuidv4().replace(/-/g,'')
-
-        while (token.length < length){
-            token += uuidv4().replace(/-/g,'')
-        }
-
-        return token.substr(0,length)
-
-    }            
 }
-
-export default  new UuidType();

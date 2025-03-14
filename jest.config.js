@@ -6,10 +6,11 @@ module.exports = {
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: 'tsconfig.test.json'
-    }]
+    }],
+    '^.+\\.js$': 'babel-jest'
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(chai)/)'
+    'node_modules/(?!(chai|callsites|colorts)/)'
   ],
   testMatch: ['**/test/**/*.test.ts'],
   moduleNameMapper: {

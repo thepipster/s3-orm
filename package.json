@@ -22,6 +22,7 @@
   "homepage": "https://github.com/thepipster/s3-orm",
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
+    "@aws-sdk/lib-storage": "^3.758.0",
     "@aws-sdk/s3-request-presigner": "^3.758.0",
     "base64url": "^3.0.1",
     "bluebird": "^3.7.2",

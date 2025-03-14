@@ -22,8 +22,6 @@ export class AwsEngine {
 
     async getObjectTypes(path: string): Promise<string[]> {
         let res = await this.aws.list(EngineHelpers.getKey('hash'));
-        Logger.debug('Listing from ', EngineHelpers.getKey('hash'));
-        Logger.debug(res);
         return await Promise.map(res, async (item)=>{
             return `${path}/${item.Key.split('/').pop()}`;
         });        
