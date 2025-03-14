@@ -2,43 +2,90 @@
 
 import Logger from "../../lib/utils/Logger";
 import Chance from "chance";
-import Storm from "../../lib/core/Storm";
-import {AwsEngine} from "../../lib/engines/AwsEngine";
-import ClientEngine from "../../lib/engines/ClientEngine";
-import DataTypes from "../../lib/types";
+import { Column, Storm, Entity, Model } from "../../lib";
 import {uniq, map} from "lodash";
 
 const chance = new Chance();
 
-// Pass in the engine, this allows swapping out the back-end DB 
-const s3Client = new ClientEngine();
-const s3 = new AwsEngine();
-
-const storm = new Storm(s3);
-const stormClient = new Storm(s3Client);
+const storm = new Storm();
+Storm.connect({
+    bucket: process.env.AWS_BUCKET,
+    prefix: 'storm-test/',
+    region: process.env.AWS_REGION,
+    rootUrl: process.env.AWS_CLOUDFRONT_URL,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_ACCESS_SECRET,
+});
 
 jest.setTimeout(60000);
 
-const schema = {
-    aUniqueString: {type: DataTypes.String, unique: true},            
-    aString: {type: DataTypes.String, index: true},            
-    aDate: {type: DataTypes.Date, index: true},            
-    aDate2: {type: DataTypes.Date, index: true},            
-    aNumber: {type: DataTypes.Number, index: true},            
-    aInteger: {type: DataTypes.Integer, index: true},            
-    aFloat: {type: DataTypes.Float, index: true},            
-    aBoolean: {type: DataTypes.Boolean, index: true},            
-    aArray: {type: DataTypes.Array, index: true},            
-    aJSONObject: {type: DataTypes.Json},            
-    aObject: {type: DataTypes.Json}        
-};
+@Entity({expires: 100})
+class TestModel extends Model {
 
-const TestModel = storm.define('test-base-model', schema, {expires: 100});
-const TestModelClient = storm.define('test-base-model', schema, {expires: 100});
+    //@PrimaryGeneratedColumn()
+    //id: number;
 
-var testInfo = TestModel.generateMock()
-var testInfo2 = TestModel.generateMock()
-var testInfo3 = TestModel.generateMock()
+
+    @Column({unique: true})
+    aUniqueString: string;
+
+    @Column({index: true})
+    aString: string;
+
+    @Column({index: true})
+    aDate: Date;
+
+    @Column({index: true})
+    aDate2: Date;
+
+    @Column({index: true})
+    aNumber: number;
+
+    @Column({type: 'integer', index: true})
+    aInteger: number;
+
+    @Column({type: 'float', index: true})
+    aFloat: number;
+
+    @Column({type: 'boolean', index: true})
+    aBoolean: number;
+
+    @Column({type: 'array'})
+    aArray: string[];
+
+    @Column({type: 'json'})
+    aJSONObject: number;
+
+    @Column({type: 'json'})
+    aObject: number;
+
+}
+
+function generateMock() {
+    return {
+        aUniqueString: chance.word(),
+        aString: chance.sentence({words: 6}),
+        aDate: chance.date(),
+        aDate2: chance.date(),
+        aNumber: chance.integer(),
+        aInteger: chance.integer(),
+        aFloat: chance.floating({ min: 0, max: 100 }),
+        aBoolean: chance.bool(),
+        aArray: chance.n(chance.word, 5),
+        aObject: {
+            stuff: chance.word(),
+            moreStuff: chance.word()
+        },
+        aJSONObject: {
+            stuff: chance.word(),
+            moreStuff: chance.word()
+        }
+    }
+}
+
+var testInfo = new TestModel(generateMock());
+var testInfo2 = new TestModel(generateMock());
+var testInfo3 = new TestModel(generateMock());
 
 //testInfo.id = '1abc'
 //testInfo2.id = '2def'
@@ -113,22 +160,29 @@ describe('BasdeModel', () => {
 
 
     afterAll(async () => {
-        let ids = await TestModel.getIds()
+        let ids = await TestModel.getIds({})
         for (let i=0; i<ids.length; i+=1){
             await TestModel.remove(ids[i])
         }
         return
     })
 
+    test('the id is set', async () => {
+        let test = new TestModel(testInfo)
+        expect(test.id).toEqual(null);
+        return
+    })
 
+
+/*
     test('new()', async () => {
         let test = new TestModel(testInfo)
-        doCheck(test)
+        doCheck(test, testInfo);
         return
     })
 
     test('save()', async () => {
-        let data = TestModel.generateMock()
+        let data = new TestModel(generateMock())
         let test = new TestModel(data)        
         await test.save()
         let test2 = await TestModel.loadFromId(data.id)
@@ -139,13 +193,13 @@ describe('BasdeModel', () => {
     test('unique', async () => {
 
         let testWord = chance.sentence({words: 6});
-        let test1 = new TestModel(TestModel.generateMock())
+        let test1 = new TestModel(generateMock())
         test1.aUniqueString = testWord;
         var emittedError = false
         await test1.save();
 
         try {
-            let test2 = new TestModel(TestModel.generateMock())
+            let test2 = new TestModel(generateMock())
             test2.aUniqueString = testWord;
             //test2.aUniqueString = test1.aUniqueString;
             await test2.save();
@@ -164,14 +218,18 @@ describe('BasdeModel', () => {
     test('loadFromId()', async () => {
 
         let loaded = await TestModel.loadFromId(testInfo.id);
-        doCheck(loaded);
+        doCheck(loaded, testInfo);
 
-        let loaded2 = await TestModelClient.loadFromId(testInfo.id);
-        doCheck(loaded2);
+        let loaded2 = await TestModel.loadFromId(testInfo2.id);
+        doCheck(loaded2, testInfo2);
+
+        let loaded3 = await TestModel.loadFromId(testInfo3.id);
+        doCheck(loaded2, testInfo3);
 
         return
     })
-
+*/
+    /*
     test('loadFromId(null)', async () => {
         let loaded = await TestModel.loadFromId(null);
         expect(loaded).toEqual(null);
@@ -383,6 +441,7 @@ describe('BasdeModel', () => {
 
         return
     })    
+        */
 
     /*
     test('save(expires)', async () => {

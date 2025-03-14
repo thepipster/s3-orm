@@ -92,7 +92,7 @@ export class S3Helper {
             const response = await this.s3.send(command);
             return response;
         } catch (err) {
-            Logger.error('S3 read error:', err);
+            //Logger.error('S3 read error:', err);
             throw err;
         }
     }
@@ -106,7 +106,7 @@ export class S3Helper {
             const response = await this.s3.send(command);
             return response;
         } catch (err) {
-            Logger.error('S3 write error:', err);
+            //Logger.error('S3 write error:', err);
             throw err;
         }
     }

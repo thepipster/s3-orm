@@ -1,8 +1,7 @@
 import Logger from "../utils/Logger";
 import _ from "lodash";
 import Chance from "chance";
-import {Column, Entity, Model, Query} from "../index";
-import { Storm } from "../core/Storm";
+import {Column, Entity, Model, Query, Storm} from "../index";
 
 const chance = new Chance();
 
@@ -14,6 +13,7 @@ Storm.connect({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_ACCESS_SECRET,
 });
+
 
 // uuid: { type: DataTypes.String, default: uuidv4}, 
 
@@ -63,6 +63,23 @@ setTimeout( async ()=> {
 
     }
 
+    async function createPerson(): Promise<Person> {
+        let tmp:Person = new Person({
+            email: chance.email(),
+            age: chance.age(),
+            score: chance.floating({ min: 0, max: 100 }),
+            fullName: chance.name({ nationality: 'en' }), 
+            lastIp: chance.ip(),
+            lastLogin: chance.date(),
+            tags: chance.n(chance.word, 5),
+            preferences: {
+                stuff: chance.word(),
+                moreStuff: chance.word()
+            }
+        });    
+        return await tmp.save();
+    }
+
     const No = 10;
     let list:Person[] = await Person.find({});
 
@@ -70,9 +87,11 @@ setTimeout( async ()=> {
     //    Logger.debug(list[i]);
     //}
 
+    await createPerson();
+
     Logger.debug(`Found ${list.length} items`);
 
-    /*
+
     if (list.length < No){
         for (let i=0; i<No; i+=1){
 
@@ -100,7 +119,7 @@ setTimeout( async ()=> {
             Logger.debug(`[Person] Saved with id = ${tmp.id}`, tmp.email);
         }
     }
-*/
+
 
     // Test queries
 

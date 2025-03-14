@@ -1,8 +1,10 @@
 export type ColumnParams = {
-    type?: 'boolean' | 'text' | 'date' | 'integer' | 'float' | 'json' | 'array';
+    type?:  string, // 'boolean' | 'text' | 'date' | 'integer' | 'float' | 'json' | 'array';
     index?: boolean;
     unique?: boolean;
     default?: any;
+    encode?: callback;
+    decode?: callback;
 };
 
 export type EntityParams = {

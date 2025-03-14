@@ -3,19 +3,14 @@ import { Storm } from "../core/Storm";
 import Logger from "../utils/Logger";
 import {cyan, blue} from "colorette";
 import {type callback, type EntityParams} from "../types";
-import { fromString } from "uuidv4";
-
-//type ModelSchema = Map<string, ColumnSchema>;
+import {IdType} from "../columns/IdType";
 
 // This is basically an extended version of ColumnParams, but is used 
 // internally only. This allows us to add a encode/decode methods 
 // and other standard properties we don't want/need to expose publicly
 export type ColumnSchema = ColumnParams & {
     name: string,
-    isNumeric: boolean,
-    onUpdateOverride?: callback,
-    toString: (val: any) => string,
-    fromString: (val: string) => any
+    isNumeric: boolean
 }
 
 
@@ -80,8 +75,21 @@ export class ModelMetaStore {
 
     static addColumn(modelName: string, meta: ColumnSchema){
 
+        // This is the first time we are adding a column to this model
         if (!this.store.has(modelName)){
-            this.store.set(modelName, {});
+
+            // By default, we add the id column
+            const idCol:ColumnSchema = {
+                name: 'id',
+                type: 'integer',
+                isNumeric: true,
+                index: true,
+                unique: true,
+                encode: IdType.encode,
+                decode: IdType.decode
+            };
+
+            this.store.set(modelName, {id: idCol});
         }
 
         const col:ModelSchema = this.store.get(modelName);

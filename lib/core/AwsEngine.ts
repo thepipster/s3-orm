@@ -3,7 +3,7 @@ import {reverse, isUndefined, map, isEmpty, intersection, slice} from "lodash";
 import {Promise} from "bluebird";
 import {S3Helper, type S3Options} from "../services/S3Helper";
 import {EngineHelpers} from "./EngineHelpers";
-import {Query} from "../types";
+import {Query, callback} from "../types";
 
 export class AwsEngine {
     
@@ -32,7 +32,13 @@ export class AwsEngine {
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async setObject(key: string, obj: any): Promise<void> {
-        let txt = JSON.stringify(obj);
+        let txt = '';
+        if (typeof obj == 'string'){
+            txt = obj;
+        }
+        else {
+            txt = JSON.stringify(obj);
+        }         
         //let key = EngineHelpers.getKey('sets', setName, val);
         await this.aws.uploadString(txt, EngineHelpers.getKey('hash', key));
     }

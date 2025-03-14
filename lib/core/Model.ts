@@ -5,7 +5,7 @@ import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
 import QueryError from "../errors/QueryError";
 import Indexing from "./Indexing";
 import {Storm} from "./Storm";
-import {cyan, blue, green} from "colorette";
+import {cyan, blue, green, gray} from "colorette";
 import {Op, Query, QueryOptions, type KeyValObject} from "../types";
 import { ModelMetaStore, type ColumnSchema, type ModelSchema } from "../decorators/ModelMetaStore";
 
@@ -15,9 +15,8 @@ export class Model {
     
     id: number = 0;
     __v: number = 1;
+    //__schema: ModelSchema;
         
-    //["constructor"]: typeof Model;
-
     // ///////////////////////////////////////////////////////////////////////////////////////
     
     constructor(data?: KeyValObject) {
@@ -30,6 +29,8 @@ export class Model {
         //const model:ModelSchema = ModelMeta[this.constructor.name];
         const model:ModelSchema = ModelMetaStore.get(this.constructor.name);
        
+        //this.__schema = model;
+
         if (model) {
             for (let key in model) {
 
@@ -55,7 +56,7 @@ export class Model {
                         this[key] = defn.default;
                     } 
                     else {
-                        Logger.error(`${key} is not defined: ${data[key]}`)
+                        //Logger.error(`${key} is not defined: ${data[key]}`)
                         this[key] = null;
                     }
     
@@ -80,7 +81,7 @@ export class Model {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    private static _name(): string{
+    private static _name(): string {
         return this.name;
     }
 
@@ -99,6 +100,23 @@ export class Model {
         }
 
         return item;
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
+    toString(): string {
+
+        const model: ModelSchema = ModelMetaStore.get(this.constructor.name);
+        let fieldStrings = {};
+
+        for (let key in model) {
+            const defn = model[key];
+            fieldStrings[key] = defn.encode(this[key]);
+            //Logger.debug(`[${cyan(key)} | ${gray(typeof this[key])}] =  ${green(this[key])} -> ${blue(fieldStrings[key])}`);
+        }
+
+        return JSON.stringify(fieldStrings);
+
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -133,10 +151,12 @@ export class Model {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async count(query: QueryOptions) {
+    static async count(query: Query | QueryOptions) {
         let docIds = await this.getIds(query);
         return docIds.length;
     }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     private static normalizeQuery(query: Query | QueryOptions): QueryOptions {
         if ('where' in query || 'order' in query || 'limit' in query || 'offset' in query || 'scores' in query) {
@@ -147,7 +167,7 @@ export class Model {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async distinct(field, query) {
+    static async distinct(field: string, query: Query | QueryOptions) {
         // TODO: speed up. This is slow as it requires loading
         // all docs then extracting the required field...
         let docs = await this.find(query);
@@ -244,6 +264,8 @@ export class Model {
             }
         }  
 
+        let fieldStrings = {};
+
         await Promise.map(keys, async (key)=>{
 
             const defn = model[key];
@@ -262,9 +284,11 @@ export class Model {
 
             //Logger.debug(`${green(modelName)}.${yellow(key)} = ${val}`);
         
-            if (typeof defn.onUpdateOverride == "function") {
-                this[key] = defn.onUpdateOverride();
-            }
+            fieldStrings[key] = defn.encode(val);
+
+            //if (typeof defn.onUpdateOverride == "function") {
+            //    this[key] = defn.onUpdateOverride();
+            //}
                        
 
         });
@@ -274,8 +298,10 @@ export class Model {
         //
 
         //Logger.debug(`[${chalk.default.greenBright(modelName)}] Saving object ${this.id} to ${modelName}/${this.id}`);
-        await s3.setObject(`${modelName}/${this.id}`, this);
 
+        // Can save as a hash object, use the fieldStrings which has made use of custom toString operators
+        await s3.setObject(`${modelName}/${this.id}`, fieldStrings);
+        
         //
         // Setup indexes...
         //
@@ -330,23 +356,46 @@ export class Model {
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     static async loadFromId(id: number) {
+
+        if (id == undefined || id == null) {
+            throw new Error(`Trying to load document without an id!`);
+        }
+
         try {
 
             const modelName = this._name();
+            const model:ModelSchema = ModelMetaStore.get(modelName);
             const key = `${modelName}/${id}`;
+
+            Logger.debug(`[${this._name()}] Loading from id ${id}, key = ${key}`);
+
             const data = await Storm.s3().getObject(key);
+
+            Logger.debug(`[${this._name()}] Loaded`, data);
+
+            // Apply the correct decode operators to the data 
+            // to ensure it is in the correct format
+            for (let key in model){
+                var defn = model[key];
+                //Logger.debug(`[${this._name()}] data[key] = ${data[key]} --> ${defn.fromString(data[key])}`);
+                data[key] = defn.decode(data[key]);
+            }
+
+            Logger.debug(`[${this._name()}] Parsed`, data);
+
             return new this(data);
 
-        } catch (err) {
+        } 
+        catch (err) {
             Logger.warn(`[${this._name()}] Error with loadFromId(), id = ${id}`);
-            //Logger.error(err);
+            Logger.error(err);
             return null;
         }
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async findOne(query: QueryOptions) {
+    static async findOne(query: Query | QueryOptions) {
         try {
             let docIds = await this.getIds(query);
 
@@ -385,7 +434,7 @@ export class Model {
      * @param {*} query The query, e.g. {name:'fred'} or {name:'fred', age:25}. Note that
      * query keys must be indexed fields in the schema.
      */
-    static async find(query: QueryOptions) {
+    static async find(query: Query | QueryOptions) {
 
         try {
             
@@ -430,8 +479,11 @@ export class Model {
      * and support for; limit, offset, order (ASC or DESC)
      * @returns 
      */
-    static async getIds(query: QueryOptions) {
+    static async getIds(query: Query | QueryOptions) {
         
+        // Allow for simple queries to be passed in
+        query = this.normalizeQuery(query);
+
         const modelName: string = this._name();
         const indx = new Indexing(null, modelName);
         var queryParts = [];
@@ -472,8 +524,6 @@ export class Model {
             const defn: ColumnSchema = ModelMetaStore.getColumn(modelName, key);
             const keyVal = query.where[key];
             let qry: any = {key, type: 'basic', value: keyVal};
-
-            Logger.debug(key, defn, keyVal);
 
             if (defn.isNumeric) {
                 qry.type = 'numeric';

@@ -54,12 +54,12 @@ class Indexing {
 
     //stringify(key: string, val: any){
     //    const fieldDef: ColumnSchema = this._checkKey(key);
-    //    return fieldDef.toString(val);
+    //    return fieldDef.encode(val);
     //}
 
     //parse(key: string, val: string){
     //    const fieldDef: ColumnSchema = this._checkKey(key);
-    //    return fieldDef.fromString(val);
+    //    return fieldDef.decode(val);
     //}    
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +77,7 @@ class Indexing {
         }
 
         const fieldDef: ColumnSchema = this._checkKey(fieldName);                
-        val = fieldDef.toString(val);
+        val = fieldDef.encode(val);
 
         const key = Indexing.getIndexName(this.modelName, fieldName);
 
@@ -110,21 +110,21 @@ class Indexing {
 
     async removeUnique(fieldName, val){
         const fieldDef: ColumnSchema = this._checkKey(fieldName);
-        val = fieldDef.toString(val);
+        val = fieldDef.encode(val);
         await Storm.s3().setRemove(Indexing.getIndexName(this.modelName, fieldName), val);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async addUnique(fieldName, val){
+    async addUnique(fieldName: string, val: any){
 
-        if (typeof val != 'string'){
-            throw new Error(`Can't add an empty non-string value!`);
+        if (val == undefined || val == null || val == ''){
+            throw new Error(`Can't add an empty or null value as a unique key!`);
         }
 
         const fieldDef: ColumnSchema = this._checkKey(fieldName);
 
-        val = fieldDef.toString(val); 
+        val = fieldDef.encode(val); 
         const key = Indexing.getIndexName(this.modelName, fieldName);
 
         let alreadyExistsId = await Storm.s3().setIsMember(key, val);
@@ -152,7 +152,7 @@ class Indexing {
             return;
         }       
         const fieldDef: ColumnSchema = this._checkKey(fieldName); 
-        val = fieldDef.toString(val);
+        val = fieldDef.encode(val);
         const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
         await Storm.s3().del(key);  
     }
@@ -169,7 +169,7 @@ class Indexing {
             return;
         }        
         const fieldDef: ColumnSchema = this._checkKey(fieldName);        
-        val = fieldDef.toString(val);
+        val = fieldDef.encode(val);
         const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
         await Storm.s3().set(key, val);  
     }
@@ -189,7 +189,7 @@ class Indexing {
             const decodedValue = EngineHelpers.decode(parts[0]);
             return {
                 //val: this.parse(fieldName, decodedValue), 
-                val: fieldDef.fromString(decodedValue),
+                val: fieldDef.decode(decodedValue),
                 id: parseInt(parts[1])
             }            
         });
@@ -240,7 +240,7 @@ class Indexing {
         }
         */
 
-        searchVal = fieldDef.toString(searchVal);
+        searchVal = fieldDef.encode(searchVal);
 
         if (!searchVal || typeof searchVal != 'string'){
             Logger.warn(`Indexing.sarch() ${fieldName} = ${searchVal} is not a string`);
@@ -314,7 +314,7 @@ class Indexing {
             await Storm.s3().zSetRemove(Indexing.getIndexName(this.modelName, fieldName), numericVal, this.id.toString());
         }
         catch(err){
-            Logger.error(err.toString());
+            Logger.error(err.encode());
             throw new Error(`Error removing numeric index for field ${fieldName}, val = ${val} and id = ${this.id}`);
         }        
     }
