@@ -345,7 +345,6 @@ export class Model {
         //}
 
         // Finally, expire anything that needs
-        // TODO: test expires
         //await indx.clearExpireIndices();
 
         return this;
@@ -367,11 +366,11 @@ export class Model {
             const model:ModelSchema = ModelMetaStore.get(modelName);
             const key = `${modelName}/${id}`;
 
-            Logger.debug(`[${this._name()}] Loading from id ${id}, key = ${key}`);
+            //Logger.debug(`[${this._name()}] Loading from id ${id}, key = ${key}`);
 
             const data = await Storm.s3().getObject(key);
 
-            Logger.debug(`[${this._name()}] Loaded`, data);
+            //Logger.debug(`[${this._name()}] Loaded`, data);
 
             // Apply the correct decode operators to the data 
             // to ensure it is in the correct format
@@ -381,14 +380,12 @@ export class Model {
                 data[key] = defn.decode(data[key]);
             }
 
-            Logger.debug(`[${this._name()}] Parsed`, data);
-
             return new this(data);
 
         } 
         catch (err) {
             Logger.warn(`[${this._name()}] Error with loadFromId(), id = ${id}`);
-            Logger.error(err);
+            //Logger.error(err);
             return null;
         }
     }
@@ -574,10 +571,6 @@ export class Model {
         else if (query.limit){
             inter = slice(inter, 0, query.limit);
         }
-
-
-        //Logger.debug(results);
-        //Logger.info(inter);
 
         return inter;
 

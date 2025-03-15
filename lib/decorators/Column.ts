@@ -20,13 +20,16 @@ export function Column(params?: ColumnParams)
     return function (target: Model, propertyKey) {
         
         //const t = Reflect.getMetadata("design:type", target, propertyKey);
+        var t = Reflect.getMetadata("design:type", target, propertyKey);
+        //console.log(`${propertyKey} type: ${t.name}`);
+
         const className = target.constructor.name;
 
         //Logger.debug(className, propertyKey, params);
 
         // Handle case where we have no type passed in
         // and we look up type from member variable type
-        const type = (params.type) ? params.type : typeof target[propertyKey];
+        const type = (params.type) ? params.type : t.name.toLowerCase();
         
         let isNumeric = false;
         if (type == 'number' || type == 'integer' || type == 'float'){
@@ -57,6 +60,8 @@ export function Column(params?: ColumnParams)
             */
         };
 
+        //Logger.debug(`[${className}] Column schemd for ${propertyKey} (native type = ${t.name})`, col);
+
         if (params.encode && typeof params.encode == 'function'){
             col.encode = params.encode;
         }
@@ -71,6 +76,7 @@ export function Column(params?: ColumnParams)
                 case 'integer':
                     col.encode = IntegerType.encode;
                     break;
+                case 'number': // default a number to a float
                 case 'float':
                     col.encode = FloatType.encode;
                     break;
@@ -91,14 +97,15 @@ export function Column(params?: ColumnParams)
         else {
             switch(type){
                 case 'json':
-                    col.decode = JsonType.encode;
+                    col.decode = JsonType.decode;
                     break;
                 case 'array':
                     col.decode = ArrayType.decode;
                     break;
                 case 'integer':
-                    col.decode = IntegerType.decode;
+                        col.decode = IntegerType.decode;
                     break;
+                case 'number': // default a number to a float
                 case 'float':
                     col.decode = FloatType.decode;
                     break;

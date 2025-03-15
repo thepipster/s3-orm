@@ -342,7 +342,7 @@ export class AwsEngine {
      */
     async zRange(setName: string, opts: Query): Promise<Array<{score: number, val: string}>> {
         
-        Logger.debug(`Entering zRange, setName = ${setName}`, opts);
+        //Logger.debug(`Entering zRange, setName = ${setName}`, opts);
 
         let res = await this.zSetMembers(setName, true) as Array<{score: number, val: string}>;
     

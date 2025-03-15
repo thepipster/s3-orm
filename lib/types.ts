@@ -12,8 +12,8 @@ export type EntityParams = {
     expires?: number; 
     // flag to determine if we add and update a created & modified col
     timestamps?: boolean; 
-    onSaveOverride?: callback;
-    onUpdateOverride?: callback;
+    //onSaveOverride?: callback;
+    //onUpdateOverride?: callback;
 };
 
 export type KeyValObject =  {

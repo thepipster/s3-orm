@@ -14,11 +14,13 @@ export class JsonType {
     }
 
     static encode(val: any): string { 
+        //Logger.debug(`Encoded json to >>${JSON.stringify(val)}<< from `, val);
         return JSON.stringify(val);
     }
 
     static decode(val: string) {    
         try {
+            //Logger.debug(`Decodeed json to >>${val}<< from `, JSON.parse(val));
             return JSON.parse(val);
         }
         catch(err){

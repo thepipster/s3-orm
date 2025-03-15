@@ -67,7 +67,7 @@ function generateMock() {
         aString: chance.sentence({words: 6}),
         aDate: chance.date(),
         aDate2: chance.date(),
-        aNumber: chance.integer(),
+        aNumber: chance.floating({ min: 0, max: 100 }),
         aInteger: chance.integer(),
         aFloat: chance.floating({ min: 0, max: 100 }),
         aBoolean: chance.bool(),
@@ -83,9 +83,13 @@ function generateMock() {
     }
 }
 
-var testInfo = new TestModel(generateMock());
-var testInfo2 = new TestModel(generateMock());
-var testInfo3 = new TestModel(generateMock());
+var testInfo = generateMock();
+var testInfo2 = generateMock();
+var testInfo3 = generateMock();
+
+var test1: TestModel;
+var test2: TestModel;
+var test3: TestModel;
 
 //testInfo.id = '1abc'
 //testInfo2.id = '2def'
@@ -149,9 +153,9 @@ describe('BasdeModel', () => {
     beforeAll(async () => {
 
         // Timeout to wait for redis connection
-        let test1 = new TestModel(testInfo)
-        let test2 = new TestModel(testInfo2)
-        let test3 = new TestModel(testInfo3)
+        test1 = new TestModel(testInfo)
+        test2 = new TestModel(testInfo2)
+        test3 = new TestModel(testInfo3)
         await test1.save()
         await test2.save()
         await test3.save()
@@ -161,32 +165,30 @@ describe('BasdeModel', () => {
 
     afterAll(async () => {
         let ids = await TestModel.getIds({})
-        for (let i=0; i<ids.length; i+=1){
-            await TestModel.remove(ids[i])
-        }
+        //for (let i=0; i<ids.length; i+=1){
+        //    await TestModel.remove(ids[i])
+        //}
         return
     })
 
-    test('the id is set', async () => {
+    test('the id is not set until a save', async () => {
         let test = new TestModel(testInfo)
         expect(test.id).toEqual(null);
         return
     })
 
 
-/*
     test('new()', async () => {
-        let test = new TestModel(testInfo)
+        let test = new TestModel(testInfo);
         doCheck(test, testInfo);
         return
     })
 
     test('save()', async () => {
-        let data = new TestModel(generateMock())
-        let test = new TestModel(data)        
-        await test.save()
-        let test2 = await TestModel.loadFromId(data.id)
-        doCheck(test2, data)
+        const loaded1 = await TestModel.loadFromId(test1.id);
+        Logger.debug(loaded1);
+
+        doCheck(loaded1, test1);
         return
     })
 
@@ -214,6 +216,7 @@ describe('BasdeModel', () => {
         return
     })
 
+/*
 
     test('loadFromId()', async () => {
 
