@@ -237,9 +237,9 @@ export class AwsEngine {
         
     /**
      * zadd
-     * @param {string} setName 
-     * @param {int} score 
-     * @param {string} val 
+     * @param {string} setName The column field name
+     * @param {int} score The score to add (the value to sort by)
+     * @param {string} val The value to add to the set (typically the record id)
      */
     async zSetAdd(setName: string, score: number, val: string, meta: string | boolean = ''): Promise<void> {
         //Logger.debug(`zSetAdd(setName = ${setName}, score = ${score}, val = ${val}, meta = ${meta})`)
@@ -293,6 +293,7 @@ export class AwsEngine {
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async zSetMembers(setName: string, scores?: boolean): Promise<Array<string | {score: number, val: string}>> {
+        
         let key = EngineHelpers.getPath('zsets', setName);
         //let key = `${this.rootPath}zsets/${setName}/`;
         let res = await this.aws.list(key);

@@ -115,10 +115,11 @@ export class S3Helper {
      * @see https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/client/s3/command/ListObjectsV2Command/
      */
     async list(directoryKey: string): Promise<S3Object[]> {
+        
         const command = new ListObjectsV2Command({
             Delimiter: '/',
             Prefix: directoryKey,
-            Bucket: this.opts.bucket
+            Bucket: this.opts.bucket,
         });
 
         const response = await this._read(command) as ListObjectsV2CommandOutput;

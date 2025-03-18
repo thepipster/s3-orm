@@ -10,7 +10,7 @@ const chance = new Chance();
 const storm = new Storm();
 Storm.connect({
     bucket: process.env.AWS_BUCKET,
-    prefix: 'storm-test/',
+    prefix: process.env.AWS_TEST_ROOT_FOLDER,
     region: process.env.AWS_REGION,
     rootUrl: process.env.AWS_CLOUDFRONT_URL,
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,

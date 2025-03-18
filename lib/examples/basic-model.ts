@@ -87,7 +87,7 @@ setTimeout( async ()=> {
     //    Logger.debug(list[i]);
     //}
 
-    await createPerson();
+    //await createPerson();
 
     Logger.debug(`Found ${list.length} items`);
 
@@ -138,9 +138,8 @@ setTimeout( async ()=> {
     }));
 
 
-    /*
 
-
+/*
     
     let objectList = await Model.find({});
 

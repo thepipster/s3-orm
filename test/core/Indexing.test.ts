@@ -3,204 +3,52 @@ import Chance from "chance";
 import {random, map} from "lodash";
 import Indexing from "../../lib/core/Indexing";
 import {type Query} from "../../lib/types";
-import {Storm} from "../../lib/core/Storm";
 import {AwsEngine} from "../../lib/core/AwsEngine";
 import {type S3Options} from "../../lib/services/S3Helper";
 import {ModelMetaStore, type ColumnSchema} from "../../lib/decorators/ModelMetaStore";
+import { Column, Storm, Entity, Model } from "../../lib";
 
-// Mock storage for S3Helper
-const mockStorage = new Map<string, { key: string; value: string; id?: number }>();
-const mockSets = new Map<string, Set<string>>();
-const mockZSets = new Map<string, Map<string, number>>();
 
-// Helper functions for mock implementation
-const extractIdFromKey = (key: string): number | undefined => {
-    const parts = key.split('###');
-    return parts.length > 1 ? parseInt(parts[1]) : undefined;
-};
+@Entity({expires: 100})
+class TestModel extends Model {
 
-const extractValueFromKey = (key: string): string => {
-    const parts = key.split('###')[0].split('/');
-    return parts[parts.length - 1];
-};
+    //@PrimaryGeneratedColumn()
+    //id: number;
 
-// Mock S3Helper
-jest.mock('../../lib/services/S3Helper', () => {
-    return {
-        S3Helper: jest.fn().mockImplementation(() => ({
-            uploadString: jest.fn().mockImplementation((val, key) => {
-                const id = extractIdFromKey(key);
-                mockStorage.set(key, { key, value: val, id });
-                return Promise.resolve();
-            }),
-            get: jest.fn().mockImplementation((key) => {
-                const item = mockStorage.get(key);
-                return Promise.resolve(item?.value);
-            }),
-            delete: jest.fn().mockImplementation((key) => {
-                mockStorage.delete(key);
-                return Promise.resolve();
-            }),
-            exists: jest.fn().mockImplementation((key) => {
-                return Promise.resolve(mockStorage.has(key));
-            }),
-            list: jest.fn().mockImplementation((prefix) => {
-                const keys = Array.from(mockStorage.entries())
-                    .filter(([key]) => key.startsWith(prefix))
-                    .map(([key, item]) => ({ Key: key, ...item }));
-                return Promise.resolve(keys);
-            }),
-            deleteAll: jest.fn().mockImplementation((keys) => {
-                keys.forEach(({Key}) => mockStorage.delete(Key));
-                return Promise.resolve();
-            }),
-            // Mock S3 set operations
-            setAdd: jest.fn().mockImplementation((setName, val) => {
-                if (!mockSets.has(setName)) {
-                    mockSets.set(setName, new Set());
-                }
-                mockSets.get(setName).add(val);
-                return Promise.resolve();
-            }),
-            setRemove: jest.fn().mockImplementation((setName, val) => {
-                if (mockSets.has(setName)) {
-                    mockSets.get(setName).delete(val);
-                }
-                return Promise.resolve();
-            }),
-            setIsMember: jest.fn().mockImplementation((setName, val) => {
-                return Promise.resolve(mockSets.has(setName) && mockSets.get(setName).has(val));
-            }),
-            setMembers: jest.fn().mockImplementation((setName) => {
-                return Promise.resolve(Array.from(mockSets.get(setName) || []));
-            }),
-            setClear: jest.fn().mockImplementation((setName) => {
-                mockSets.delete(setName);
-                return Promise.resolve();
-            }),
-            // Mock S3 sorted set operations
-            zSetAdd: jest.fn().mockImplementation((setName, score, val) => {
-                if (!mockZSets.has(setName)) {
-                    mockZSets.set(setName, new Map());
-                }
-                mockZSets.get(setName).set(val, Number(score));
-                return Promise.resolve();
-            }),
-            zSetRemove: jest.fn().mockImplementation((setName, score, val) => {
-                if (mockZSets.has(setName)) {
-                    mockZSets.get(setName).delete(val);
-                }
-                return Promise.resolve();
-            }),
-            zSetMembers: jest.fn().mockImplementation((setName, withScores = false) => {
-                if (!mockZSets.has(setName)) return Promise.resolve([]);
-                const members = Array.from(mockZSets.get(setName).entries())
-                    .sort(([, a], [, b]) => a - b)
-                    .map(([val, score]) => withScores ? { val, score } : val);
-                return Promise.resolve(members);
-            }),
-            zSetClear: jest.fn().mockImplementation((setName) => {
-                mockZSets.delete(setName);
-                return Promise.resolve();
-            }),
-            zRange: jest.fn().mockImplementation((setName, query) => {
-                if (!mockZSets.has(setName)) return Promise.resolve([]);
-                
-                const entries = Array.from(mockZSets.get(setName).entries())
-                    .filter(([, score]) => {
-                        if (query.$gt !== undefined && score <= query.$gt) return false;
-                        if (query.$gte !== undefined && score < query.$gte) return false;
-                        if (query.$lt !== undefined && score >= query.$lt) return false;
-                        if (query.$lte !== undefined && score > query.$lte) return false;
-                        return true;
-                    })
-                    .sort(([, a], [, b]) => query.order === 'DESC' ? b - a : a - b);
+    @Column({unique: true})
+    aUniqueString: string;
 
-                if (query.limit) {
-                    return Promise.resolve(entries.slice(0, query.limit).map(([val, score]) => ({ val, score })));
-                }
-                return Promise.resolve(entries.map(([val, score]) => ({ val, score })));
-            })
-        }))
-    };
-});
+    @Column({index: true})
+    aString: string;
 
-const s3Options: S3Options = {
-    bucket: 'test-bucket',
-    prefix: 'test-prefix/',
-    accessKeyId: 'test-key',
-    secretAccessKey: 'test-secret'
-};
+    @Column({index: true})
+    aDate: Date;
 
-const s3 = new AwsEngine(s3Options);
-Storm.connect(s3Options);
+    @Column({index: true})
+    aDate2: Date;
 
-const chance = new Chance();
-const modelName = 'testing-index-model';
+    @Column({index: true})
+    aNumber: number;
 
-// Add model schema columns
-const ageSchema: ColumnSchema = {
-    name: 'age',
-    type: 'integer',
-    index: true,
-    isNumeric: true,
-    toString: (val: any) => val.toString(),
-    fromString: (val: string) => parseInt(val)
-};
+    @Column({type: 'integer', index: true})
+    aInteger: number;
 
-const animalSchema: ColumnSchema = {
-    name: 'animal',
-    type: 'string',
-    index: true,
-    isNumeric: false,
-    toString: (val: any) => val.toString(),
-    fromString: (val: string) => val
-};
+    @Column({type: 'float', index: true})
+    aFloat: number;
 
-const uniqueAnimalSchema: ColumnSchema = {
-    name: 'uniqueAnimal',
-    type: 'string',
-    unique: true,
-    isNumeric: false,
-    toString: (val: any) => val.toString(),
-    fromString: (val: string) => val
-};
+    @Column({type: 'boolean', index: true})
+    aBoolean: number;
 
-const lastLoginSchema: ColumnSchema = {
-    name: 'lastLogin',
-    type: 'date',
-    index: true,
-    isNumeric: false,
-    toString: (val: any) => val.toString(),
-    fromString: (val: string) => new Date(val)
-};
+    @Column({type: 'array'})
+    aArray: string[];
 
-const preferencesSchema: ColumnSchema = {
-    name: 'preferences',
-    type: 'json',
-    index: true,
-    isNumeric: false,
-    toString: (val: any) => JSON.stringify(val),
-    fromString: (val: string) => JSON.parse(val)
-};
+    @Column({type: 'json'})
+    aJSONObject: number;
 
-const tagsSchema: ColumnSchema = {
-    name: 'tags',
-    type: 'array',
-    index: true,
-    isNumeric: false,
-    toString: (val: any) => JSON.stringify(val),
-    fromString: (val: string) => JSON.parse(val)
-};
+    @Column({type: 'json'})
+    aObject: number;
 
-ModelMetaStore.addColumn(modelName, ageSchema);
-ModelMetaStore.addColumn(modelName, animalSchema);
-ModelMetaStore.addColumn(modelName, uniqueAnimalSchema);
-ModelMetaStore.addColumn(modelName, lastLoginSchema);
-ModelMetaStore.addColumn(modelName, preferencesSchema);
-ModelMetaStore.addColumn(modelName, tagsSchema);
-
-const indx = new Indexing(555, modelName);
+}
 
 describe('Indexing', () => {
     beforeEach(() => {

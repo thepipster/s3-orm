@@ -164,7 +164,7 @@ class Indexing {
      * @param {*} fieldName 
      * @param {*} val 
      */
-    async add(fieldName, val){
+    async add(fieldName: string, val: any){
         if (this._isNull(val)){
             return;
         }        

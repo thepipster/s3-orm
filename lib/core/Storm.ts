@@ -1,5 +1,6 @@
 import Logger from "../utils/Logger";
 import {AwsEngine} from "./AwsEngine";
+import {S3Helper} from "../services/S3Helper";
 import {type S3Options} from "../services/S3Helper";
 import * as dotenv from 'dotenv';
 
@@ -14,10 +15,24 @@ export class Storm {
 
     static debug: boolean = false;
     static engine: AwsEngine;
+    static rootPath: string = "s3orm/";
+    private static _aws: S3Helper;
 
     static connect(opts: S3Options){
-        Logger.debug(`Connection.init()`);
+        //Logger.debug(`Connection.init()`);
+        this._aws = new S3Helper(opts);
         this.engine = new AwsEngine(opts);
+        this.rootPath = opts.prefix;
+        if (this.rootPath.slice(-1) !== '/'){
+            this.rootPath += '/';
+        }
+    }
+
+    static aws(): S3Helper{
+        if (!this._aws){
+            throw new Error('You must call Connection.init() before using the S3 engine');
+        }
+        return this._aws;        
     }
 
     /**

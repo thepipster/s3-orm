@@ -35,6 +35,8 @@ export class ModelMetaStore {
      */
     static getColumn(modelName: string, columnName: string): ColumnSchema {
         
+        //Logger.debug(this.store);
+
         if (!this.store.has(modelName)){
             throw new Error(`Model ${modelName} not found!`);
         }
