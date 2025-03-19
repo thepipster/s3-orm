@@ -2,6 +2,7 @@ import Logger from "../utils/Logger";
 import _ from "lodash";
 import Chance from "chance";
 import {Column, Entity, Model, Query, Storm} from "../index";
+import {Profiler} from "../utils/Profiler";
 
 const chance = new Chance();
 
@@ -94,32 +95,14 @@ setTimeout( async ()=> {
 
     if (list.length < No){
         for (let i=0; i<No; i+=1){
-
-            let tmp = new Person({
-                email: chance.email(),
-                age: (i==0) ? 20 : chance.age(),
-                score: (i==0) ? 50.56 : chance.floating({ min: 0, max: 100 }),
-                fullName: (i==0) ? 'Bob The Builder' : chance.name({ nationality: 'en' }), 
-                lastIp: chance.ip(),
-                lastLogin: chance.date(),
-                tags: chance.n(chance.word, 5),
-                preferences: {
-                    stuff: chance.word(),
-                    moreStuff: chance.word()
-                }
-            });
-
-            try {
-                await tmp.save();
-                Logger.debug(`[Person] Saved with id = ${tmp.id}`, tmp);
-            }
-            catch(err){
-                Logger.error(err.toString());
-            }
-            Logger.debug(`[Person] Saved with id = ${tmp.id}`, tmp.email);
+            Profiler.start('createPerson');
+            let tmp:Person = await createPerson();            
+            let ms:number = Profiler.stop('uploadWithNumber');
+            Logger.debug(`[Person] Saved with id = ${tmp.id}, ${tmp.email} - took ${ms}ms`, );
         }
     }
 
+    Profiler.showResults();
 
     // Test queries
 

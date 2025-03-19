@@ -6,13 +6,17 @@ import {Promise} from "bluebird";
 import {Query} from "../types";
 import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
 
+
 export class NumericIndex {
 
     indexRootPath: string = "s3orm/";
     schema: ModelSchema = {};
     modelName: string = "";
     rootKey?: string;
+
+    private shardSize: number = 10;
     private paddingLength: number = 10;
+    private shardPaddingLength: number = 5;
 
     constructor(modelName: string) {
         this.schema = ModelMetaStore.get(modelName);
@@ -58,21 +62,158 @@ export class NumericIndex {
         // Delete old index (if there is one)
         if (prevVal != undefined && prevVal != null) {
             const oldPrefix:string = this._getPrefix(colName, prevVal, defn);
-            //await Storm.aws().delete(`${oldPrefix}###${id}`);
-            await Storm.aws().delete(oldPrefix);
+            await Storm.aws().delete(`${oldPrefix}###${id}`);
+            //await Storm.aws().delete(oldPrefix);
         }
 
         // /await Storm.s3().get(`${this.getNodeKey(colName, prevVal)}`);
         //Logger.debug(`Setting index at ${newKey}`);
 
-        await Storm.aws().uploadString(id.toString(), newPrefix);
+        await Storm.aws().uploadString(id.toString(), newKey);
 
+    }
+
+    /*
+
+    private async listObjectsByShards(bucketName, shardSize = 10, totalDigits = 3) {
+        const allFiles = [];
+    
+        for (let i = 0; i < Math.pow(10, totalDigits); i += shardSize) {
+            const prefix = getPaddedPrefix(i, totalDigits); // Get zero-padded prefix
+    
+            console.log(`Fetching files with prefix: ${prefix}`);
+    
+            const command = new ListObjectsV2Command({
+                Bucket: bucketName,
+                Prefix: prefix, // Use numeric prefix as a shard key
+            });
+    
+            try {
+                const response = await s3Client.send(command);
+                if (response.Contents && response.Contents.length > 0) {
+                    allFiles.push(...response.Contents.map(obj => obj.Key));
+                } else {
+                    console.log(`No files found for prefix: ${prefix}, stopping early.`);
+                    break;
+                }
+            } catch (err) {
+                console.error(`Error fetching prefix ${prefix}:`, err);
+            }
+        }
+    
+        console.log("Final file list:", allFiles);
+        return allFiles;
+    }
+        */
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
+    getShardKey(val: number): string {
+        return String(Math.floor(val / this.shardSize)).padStart(this.shardPaddingLength, "0");
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
+    // Example Usage
+    /*
+
+    For shard size of 1000, the following keys will be generated:
+
+     Number     Shard      Key
+      24        0          00000-0000000024
+      107       1          00001-0000000107
+      842       8          00008-0000000842
+     1307       13         00013-0000001307
+
+     Or just store a json doc at each shard key with the list of ids
+
+    */
+
+    getPaddedPrefix(number) {
+        return String(number).padStart(this.paddingLength, "0");
+    }
+
+    /**
+     * Extracts the most significant digit and scales it back to the correct magnitude,
+     * e.g. 86600 becomes 80000, 435 becomes 400, etc.
+     * @param num 
+     * @returns 
+     */
+    mostSignificantDigitNumbers(num: number) {
+        if (num === 0) return 0; // Handle edge case for zero
+        let magnitude = Math.pow(10, Math.floor(Math.log10(num)));
+        let msd = Math.floor(num / magnitude);
+        return msd * magnitude;
+    }
+
+
     async getIds(colName: string, query: Query): Promise<number[]> {
 
+        const minVal = 100;
+
+        let gt:number = (query.$gt) ? query.$gt : query.$gte;
+        let lt:number = (query.$lt) ? query.$lt : query.$lte;
+
+        if (!gt){
+            gt = 0;
+        }
+
+        if (!lt){
+            lt = Number.MAX_SAFE_INTEGER;
+        }
+
+
+        // First find how many shard keys are there between the two values
+
+        let shard0:number = Math.floor(gt / this.shardSize);
+        let shard1:number = Math.floor(lt / this.shardSize);
+
+        // Iterate over the shard keys and fetch the files
+
+
+        /*
+
+        const allFiles = [];
+        const defn = ModelMetaStore.getColumn(this.modelName, colName);
+    
+        let n0: number = this.mostSignificantDigitNumbers(shard0);
+        let shardKey = 
+        let startPrefix:string = this._getPrefix(colName, n0, defn);
+
+        startPrefix = startPrefix.slice(0, -n0.toString().length+1);
+
+        Logger.debug(`Fetching files with prefix: ${startPrefix}`);
+
+        let continuationToken = null;
+
+        const params = {
+            Bucket: Storm.aws().opts.bucket,
+            Delimiter: 's3orm/indexes/Person/score/',
+            Prefix: startPrefix, // Start listing from the closest match
+            MaxKeys: 1000,
+            ContinuationToken: continuationToken
+        };
+
+        const response = await Storm.aws().s3.send(new ListObjectsV2Command(params)) as ListObjectsV2CommandOutput;
+
+        Logger.debug(response);
+
+        if (response.Contents && response.Contents.length > 0) {
+            allFiles.push(...response.Contents.map(obj => obj.Key));
+        } else {
+            Logger.debug(`No files found for prefix: ${startPrefix}, stopping early.`);
+            //break;
+        }
+
+
+    
+        console.log("Final file list:", allFiles);
+        return allFiles;
+
+
+*/
+
+        /*
         let shard0:number = query.$gt || query.$gte || 0;
         let shard1:number = query.$lt || query.$lte || Number.MAX_SAFE_INTEGER;
 
@@ -94,6 +235,7 @@ export class NumericIndex {
         }
         
         return ids;
+        */
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -189,3 +331,26 @@ export class NumericIndex {
     }    
     
 }
+
+
+
+/**
+ * Example usage
+ */
+async function main() {
+
+    Storm.connect({
+        bucket: process.env.AWS_BUCKET,
+        prefix: process.env.AWS_ROOT_FOLDER,
+        region: process.env.AWS_REGION,
+        rootUrl: process.env.AWS_CLOUDFRONT_URL,
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_ACCESS_SECRET,
+    });
+
+
+}
+
+// Uncomment to run the example
+main();
+

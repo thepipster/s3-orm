@@ -7,6 +7,9 @@ import {
     HeadObjectCommand
 } from "@aws-sdk/client-s3";
 import {Storm} from "../core/Storm";
+import Chance from "chance";
+import {Profiler} from "../utils/Profiler";
+
 /**
  * S3ShardedManager - Manages numerical files in S3 using dynamic sharding
  * Uses a combination of directory sharding and distribution strategies for optimal performance
@@ -693,6 +696,52 @@ async function main() {
             1000          // secondary shard size of 1,000
         );
 
+        // chance.floating({ min: 0, max: 100 }),
+        const chance = new Chance();
+        const no = 1000;
+
+        
+
+        /*
+        for (let i=0; i<no; i+=1){
+            
+            let name:string = chance.name({ nationality: 'en' });
+            let score:number = chance.integer({ min: -9999999, max: 9999999 });
+
+            //let score:number = chance.floating({ min: 0, max: 100 });
+
+            Profiler.start('uploadWithNumber');
+            const result = await largeRangeManager.uploadWithNumber(name,score);
+            //console.debug(result);
+            let ms:number = Profiler.stop('uploadWithNumber');
+            console.debug(`Uploaded ${i} in ${ms} ms`);
+
+            if (i % 100 === 0) {
+                console.debug(i)
+                Profiler.showResults();
+            }
+
+        }
+
+        Profiler.showResults();
+        */
+
+
+        for (let i=0; i<no; i+=1){
+
+            let m1: number = chance.integer({ min: -9999999, max: 9999999 });
+            let m2: number = chance.integer({ min: m1+1, max: 9999999 });
+            console.log(`Getting files between ${m1} and ${m2}`);       
+
+            Profiler.start('listFilesInRange');
+            const files = await largeRangeManager.listFilesInRange(m1, m2);    
+            let ms:number = Profiler.stop('listFilesInRange');
+            console.log(`Found ${files.length} files between ${m1} and ${m2} in ${ms} ms`);       
+        }
+
+        Profiler.showResults();
+
+        /*
         // For densely packed float values (like scientific measurements)
         const floatManager = new S3ShardedManager(
             "measurements/",
@@ -704,6 +753,7 @@ async function main() {
             true,         // enable secondary sharding
             0.1           // secondary shard size of 0.1
         );
+
 
         // Example: Upload a file with a specific number
         const result = await largeRangeManager.uploadWithNumber(
@@ -727,6 +777,7 @@ async function main() {
         );
 
         console.log("Available numbers:", availableNumbers);
+        */
 
     } catch (error) {
         console.error("Error:", error);

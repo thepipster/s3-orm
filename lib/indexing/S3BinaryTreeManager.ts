@@ -8,6 +8,9 @@ import {
     PutObjectCommandOutput
 } from "@aws-sdk/client-s3";
 import {Storm} from "../core/Storm";
+import Chance from "chance";
+import {Profiler} from "../utils/Profiler";
+
 
 // Tree metadata interface
 interface TreeMetadata {
@@ -913,6 +916,50 @@ async function main() {
         // Initialize the binary tree
         await manager.initialize();
 
+
+        // chance.floating({ min: 0, max: 100 }),
+        const chance = new Chance();
+        const no = 1000;
+
+            
+        for (let i=0; i<no; i+=1){
+            
+            let name:string = chance.name({ nationality: 'en' });
+            let score:number = chance.integer({ min: -9999999, max: 9999999 });
+
+            //let score:number = chance.floating({ min: 0, max: 100 });
+
+            Profiler.start('uploadWithNumber');
+            const result = await manager.uploadWithNumber(name,score);
+            //console.debug(result);
+            Profiler.stop('uploadWithNumber');
+
+            if (i % 100 === 0) {
+                console.debug(i)
+                Profiler.showResults();
+            }
+
+        }
+
+        Profiler.showResults();
+        
+
+
+        for (let i=0; i<no; i+=1){
+
+            let m1: number = chance.integer({ min: -9999999, max: 9999999 });
+            let m2: number = chance.integer({ min: m1+1, max: 9999999 });
+            console.log(`Getting files between ${m1} and ${m2}`);       
+
+            Profiler.start('listFilesInRange');
+            const files = await manager.listFilesInRange(m1, m2);    
+            let ms:number = Profiler.stop('listFilesInRange');
+            console.log(`Found ${files.length} files between ${m1} and ${m2} in ${ms} ms`);       
+        }
+
+        Profiler.showResults();        
+
+        /*
         // Example 1: Upload a file with an integer number
         console.log("Uploading file with number 42...");
         const result1 = await manager.uploadWithNumber(
@@ -969,6 +1016,7 @@ async function main() {
         console.log("Deleting file with number 3.14...");
         const deleted = await manager.deleteFile(3.14);
         console.log(`File with number 3.14 deleted: ${deleted}`);
+        */
 
     } catch (error) {
         console.error("Error:", error);

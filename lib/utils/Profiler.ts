@@ -1,84 +1,103 @@
 import Logger from "./Logger";
 
-/**
-* Profiler
-*/
-Profiler = (function(){
 
-    function cls()
-    {
-        // private instance field
-        var times = {};
-        var count = {};
-        var total = {};
+type ProfilerData = {
+    label: string;
+    count: number; // number of times this label was called 
+    total: number; // total time spent in this label
+    time: number[]; // prev time this label was called
+}   
 
-        /**
-        * Start a timer, with a given label
-        */
-        this.start = function(label){
-            if (!count[label]){
-                count[label] = 0
-                total[label] = 0
+export class Profiler {
+
+    static data: Map<string, ProfilerData> = new Map();
+
+    /**
+    * Start a timer, with a given label
+    */
+    static start(label: string){
+        this.data.set(label, {
+            label: label,
+            count: 0,
+            total: 0,
+            time: process.hrtime()
+        });
+    };
+
+    /**
+    * Stop a timer, with a given label
+    */
+    static stop(label: string){
+        try {
+            
+            let prev: ProfilerData = this.data.get(label);
+
+            if (!prev){
+                return
             }
-            times[label] = Date.now() //process.hrtime();
-        };
 
-        /**
-        * Stop a timer, with a given label
-        */
-        this.stop = function(label){
-            try {
-                
-                if (!(label in times)) {
-                    return
-                }
+            let elapsed = Profiler.__getElapsedTime(prev.time);
+            //let delta = parseFloat(elapsed.milliseconds + elapsed.seconds*1000)
+            prev.time = process.hrtime();
+            prev.count += 1;
+            prev.total += elapsed;
 
-                //let elapsed = __getElapsedTime(times[label]);
-                //let delta = parseFloat(elapsed.milliseconds + elapsed.seconds*1000)
-                let delta = Date.now() - times[label]
-
-                count[label] += 1
-                total[label] += delta
-                
-                return delta
-            }
-            catch(err){
-                Logger.error(err, label, times)
-            }
-        };
-
-        /**
-        * Show results for all timers
-        */
-        this.showResults = function(){
-            for (label in times){
-
-                let msg = ''
-                if (count[label] > 1){
-                    let average = (total[label] / count[label]).toLocaleString('en', {maximumFractionDigits : 2})
-                    msg = `[Profiler] ${label} took an average of ${average} ms (${count[label]} calls, total of ${total[label].toLocaleString('en', {maximumFractionDigits : 2})} ms)`
-                }
-                else {
-                    msg = `[Profiler] ${label} took ${total[label]} ms`
-                }
-
-                Logger.info(msg);
-            }
-        };
-
-        function __getElapsedTime(startTimestamp){
-            var precision = 3; // 3 decimal places
-            var elapsed = process.hrtime(startTimestamp)[1] / 1000000; // divide by a million to get nano to milli
-            var s = process.hrtime(startTimestamp)[0]
-            var ms = elapsed.toFixed(precision)
-            startTimestamp = process.hrtime(); 
-            return {seconds: parseInt(s), milliseconds: ms};
+            this.data.set(label, prev);
+            
+            return elapsed;
         }
+        catch(err){
+            Logger.error(err, label, this.data)
+        }
+    };
 
+    /**
+    * Show results for all timers
+    */
+    static showResults(){
+
+        let msg = '';
+
+        this.data.forEach((meta: ProfilerData, label: string) => {
+
+            if (meta.count > 1){
+                let average = (meta.total / meta.count).toLocaleString('en', {maximumFractionDigits : 2})
+                msg = `[Profiler] ${label} took an average of ${average} ms (${meta.count} calls, total of ${meta.total.toLocaleString('en', {maximumFractionDigits : 2})} ms)`
+            }
+            else {
+                msg = `[Profiler] ${label} took ${meta.total} ms`
+            }
+
+        });
+
+        Logger.info(msg);
+        
+    };
+
+    /**
+     * Get the current unix epoch time stamp, in high precision milliseconds
+     * @returns 
+     */
+    private static __getTimestamp(): number {        
+        const start = process.hrtime();
+        const end = process.hrtime(start);        
+        const seconds: number = end[0];
+        const nanoseconds : number = end[1];
+        const milliseconds : number = (seconds * 1000) + (nanoseconds / 1000000);
+        return milliseconds;
     }
 
-    return cls;
-})();
+    private static __getElapsedTime(startTimestamp): number {
+        const end = process.hrtime(startTimestamp);
+        const seconds: number = end[0];
+        const nanoseconds : number = end[1];
+        const milliseconds : number = (seconds * 1000) + (nanoseconds / 1000000);
+        return milliseconds;
+
+    }
+        
 
 
-export default  Profiler;
+
+}
+
