@@ -3,9 +3,14 @@ import Chance from "chance";
 const chance = new Chance();
 
 export class IntegerType  {
+    
+    static isNumeric:boolean = true;
+    static typeName:string = "integer";
+
     static mock(){ 
         return chance.integer({ min: -20000, max: 20000 });
     }
+
     static encode(val: any): string { 
 
         if (!val || val === null || val === undefined) {
@@ -16,7 +21,7 @@ export class IntegerType  {
         
     }
 
-    static decode(val: string) {    
+    static decode(val: string):number {    
 
         if (!val || val === null || val === undefined) {
             throw new Error(`Trying to load a integer column and got an invalid value: ${val}`);

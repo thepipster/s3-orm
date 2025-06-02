@@ -4,6 +4,9 @@ const chance = new Chance();
 
 export class FloatType {
     
+    static isNumeric:boolean = true;
+    static typeName:string = "float";
+    
     static mock(){ 
         return chance.floating({ min: 0, max: 1000000});
     }
@@ -18,7 +21,7 @@ export class FloatType {
         
     }
 
-    static decode(val: string) {    
+    static decode(val: string):number {    
 
         if (!val || val === null || val === undefined) {
             throw new Error(`Trying to load a float column and got an invalid value: ${val}`);
@@ -29,6 +32,7 @@ export class FloatType {
         if (isFinite(numb)){
             return numb;
         }
+
         return null;
 
     }

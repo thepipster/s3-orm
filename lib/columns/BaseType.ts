@@ -3,6 +3,9 @@ import Logger from "../utils/Logger";
 
 export class BaseType {
     
+    static isNumeric:boolean = false;
+    static typeName:string = "base";   
+
     static mock(){
         return null;
     }

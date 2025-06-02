@@ -3,6 +3,10 @@ import Chance from "chance";
 const chance = new Chance();
 
 export class BooleanType  {  
+
+    static isNumeric:boolean = false;
+    static typeName:string = "boolean";
+    
     static mock(){ 
         return chance.bool();
     }

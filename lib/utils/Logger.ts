@@ -1,23 +1,22 @@
-//import callsites from 'callsites';
-//const { default: callsites } = await import('callsites');
-import {callsites} from "./callsites";
-import {cyan, blue, green, gray, bold} from "colorette";
+"use strict";
+
+import callsite, {CallSite } from "callsite";
+import color from "colorts"; // https://shaselle.github.io/colors.ts/
 import * as path from "path";
 import * as util from "util";
 import * as winston from "winston";
 const format = winston.format;
 
-// https://github.com/winstonjs/winston#readme
 
-const Logger = {
+export default class Logger {
 
-    _logger: null,
+    private static _logger: winston.Logger;
 
-    showStackTrace: true,
+    static showStackTrace: boolean;
 
-    stackDepth: 2,
+    static stackDepth: number = 2;
 
-    init() {
+    static init() {
         const myFormat = format.printf((info) => {
             return `${info.level} ${info.message}`;
         });
@@ -43,10 +42,9 @@ const Logger = {
         Logger._logger = winston.createLogger({
             transports: transports,
         });
-    },
+    }
 
-    
-    __getStackTrace(stackObj) {
+    private static __getStackTrace(stackObj: CallSite[]) {
 
         let trace_str = "";
         let depth = 1;
@@ -61,12 +59,12 @@ const Logger = {
                     let fname = site.getFileName();
                     fname = fname ? path.basename(fname) : fname;
 
-                    if (fname == "Logger.js" || fname == "Logger.ts") {
+                    if (fname == "Logger.js") {
                         startDepth = depth + 1;
                     }
 
                     if (depth == startDepth) {
-                        trace_str += `{from ${bold(fname)}:${no}`;
+                        trace_str += `{from ${color(fname).bold}:${no}`;
                     }
                     else if (no && depth > startDepth && depth <= startDepth + maxDepth) {
                         trace_str += `, ${fname}:${no}`;
@@ -81,12 +79,11 @@ const Logger = {
             }
         }
 
-        return gray(trace_str);
-    },
-    
+        return color(trace_str).gray;
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    __serialize(...args: any[]): string {
+    private static __serialize(...args: any[]): string {
 
         let msg = "";
 
@@ -129,66 +126,66 @@ const Logger = {
         }
 
         return msg;
-    },
+    }
 
-    setLevel(lvl: string) {
+    static setLevel(lvl: string) {
         Logger._logger.level = lvl;
-    },
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    log(...args: any[]): void {
+    static log(...args: any[]): void {
         let str = Logger.__serialize(...args);
-        if (this.showStackTrace) {
-            str += Logger.__getStackTrace(callsites());
+        if (Logger.showStackTrace) {
+            str += Logger.__getStackTrace(callsite());
         }
         Logger._logger.log.apply(Logger._logger, ["log", str]);
-    },
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    debug(...args: any): void {
+    static debug(...args: any): void {
         let str = Logger.__serialize(...args);
-        if (this.showStackTrace) {
-            str += Logger.__getStackTrace(callsites());
+        if (Logger.showStackTrace) {
+            str += Logger.__getStackTrace(callsite());
         }
         Logger._logger.log.apply(Logger._logger, ["debug", str]);
-    },
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    info(...args: any[]): void {
+    static info(...args: any[]): void {
         let str = Logger.__serialize(...args);
-        if (this.showStackTrace) {
-            str += Logger.__getStackTrace(callsites());
+        if (Logger.showStackTrace) {
+            str += Logger.__getStackTrace(callsite());
         }
         Logger._logger.log.apply(Logger._logger, ["info", str]);
-    },
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    warn(...args: any[]): void {
+    static warn(...args: any[]): void {
         let str = Logger.__serialize(...args);
-        if (this.showStackTrace) {
-            str += Logger.__getStackTrace(callsites());
+        if (Logger.showStackTrace) {
+            str += Logger.__getStackTrace(callsite());
         }
         Logger._logger.log.apply(Logger._logger, ["warn", str]);
-    },
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    error(...args: any[]): void {
+    static error(...args: any[]): void {
         let str = Logger.__serialize(...args);
-        if (this.showStackTrace) {
-            str += Logger.__getStackTrace(callsites());
+        if (Logger.showStackTrace) {
+            str += Logger.__getStackTrace(callsite());
         }
         Logger._logger.log.apply(Logger._logger, ["error", str]);
-    },
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    fatal(...args: any[]): void {
+    static fatal(...args: any[]): void {
         // fatals always include a stack trace
-        const str = Logger.__serialize(args); // + Logger.__getStackTrace(callsites());
+        const str = Logger.__serialize(args) + Logger.__getStackTrace(callsite());
         Logger._logger.log.apply(Logger._logger, ["error", str]);
-    },
+    }
 };
 
 Logger.init();
 Logger.setLevel("debug");
 
-export default Logger;
+//module.exports = Logger

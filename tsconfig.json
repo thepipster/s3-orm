@@ -29,8 +29,7 @@
         ]
     },
     "include": [
-        "./lib/**/*",
-        "./test/**/*"
+        "./lib/**/*"
     ],
     "exclude": [
         "coverage",

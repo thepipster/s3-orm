@@ -1,9 +1,12 @@
 import {isFinite} from "lodash";
 import Chance from "chance";
-import Logger from "../utils/Logger";
 const chance = new Chance();
 
 export class DateType  {
+
+    static isNumeric:boolean = true;
+    static typeName:string = "date";
+    
     static mock(){ 
         return chance.date();
     }

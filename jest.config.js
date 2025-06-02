@@ -12,7 +12,7 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(chai|callsites|colorts)/)'
   ],
-  testMatch: ['**/test/**/*.test.ts'],
+  testMatch: ['**/lib/**/*.test.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/lib/$1'
   }

@@ -1,11 +1,19 @@
 
-import Logger from "../../lib/utils/Logger";
 import {ArrayType} from "../../lib/columns/ArrayType";
 import _ from "lodash";
 
 const testObj = ['tag1', 'tag2', 'tsg346',  'sdgsdgsdgds'];
 const testStr = `["tag1","tag2","tsg346","sdgsdgsdgds"]`;
+
 describe('ArrayType', () => {
+
+    test('name', () => {
+        expect(ArrayType.typeName).toEqual('array');
+    })
+
+    test('isNumeric', () => {
+        expect(ArrayType.isNumeric).toEqual(false);
+    })
 
     test('encode', () => {
 

@@ -1,15 +1,11 @@
 
-"use strict";
-
-import Logger from "../utils/Logger";
-import UuidType from './UuidType.js';
-const encodeMarker = UuidType.encodedMarker;
+import {UuidType} from './UuidType';
 const testUuid = 'c06032b7-e3b7-4278-9fe6-a83b153d1804';
 
 describe('UuidType', () => {
 
     test('name', () => {
-        expect(UuidType.name).toEqual('uuid');
+        expect(UuidType.typeName).toEqual('uuid');
     })
 
     test('isNumeric', () => {
@@ -21,17 +17,16 @@ describe('UuidType', () => {
         
         const encoded = UuidType.encode(testUuid);
         
-        expect(encoded.slice(0, encodeMarker.length)).toEqual(`${encodeMarker}`);
         expect(typeof encoded).toEqual(`string`);
-        //expect(encoded).toEqual(testStr); `${encodeMarker}5`
+        expect(encoded).toEqual(testUuid);
 
         return;
     })
 
-    test('parse', () => {
+    test('decode', () => {
 
         const encoded = UuidType.encode(testUuid);
-        const parsed = UuidType.parse(encoded);
+        const parsed = UuidType.decode(encoded);
         
         expect(parsed).toEqual(testUuid);
 

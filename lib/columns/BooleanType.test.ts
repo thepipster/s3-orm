@@ -1,9 +1,16 @@
 
-import Logger from "../../lib/utils/Logger";
 import {BooleanType} from "../../lib/columns/BooleanType";
 import _ from "lodash";
 
 describe('BooleanType', () => {
+
+    test('name', () => {
+        expect(BooleanType.typeName).toEqual('boolean');
+    })
+
+    test('isNumeric', () => {
+        expect(BooleanType.isNumeric).toEqual(false);
+    })
 
     test('encode', () => {        
         

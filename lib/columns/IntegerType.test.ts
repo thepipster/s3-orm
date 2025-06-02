@@ -1,14 +1,10 @@
 
-"use strict";
-
-import Logger from "../utils/Logger";
-import IntegerType from './IntegerType.js';
-const encodeMarker = IntegerType.encodedMarker;
+import {IntegerType} from './IntegerType';
 
 describe('IntegerType', () => {
 
     test('name', () => {
-        expect(IntegerType.name).toEqual('integer');
+        expect(IntegerType.typeName).toEqual('integer');
     })
 
     test('isNumeric', () => {
@@ -20,17 +16,16 @@ describe('IntegerType', () => {
         const testStr = IntegerType.mock();
         const encoded = IntegerType.encode(testStr);
         
-        expect(encoded.slice(0, encodeMarker.length)).toEqual(`${encodeMarker}`);
         expect(typeof encoded).toEqual(`string`);
-        //expect(encoded).toEqual(testStr); `${encodeMarker}5`
+        expect(encoded).toEqual(testStr+'');
 
         return;
     })
 
-    test('parse', () => {
+    test('decode', () => {
 
         const encoded = IntegerType.encode('6');
-        const parsed = IntegerType.parse(encoded);
+        const parsed = IntegerType.decode(encoded);
         
         expect(parsed).toEqual(6);
 

@@ -4,6 +4,8 @@ const chance = new Chance();
 export class IdType {
 
     //private static idCounters: Map<string, number> = new Map();
+    static isNumeric:boolean = true;
+    static typeName:string = "id";
     
     static mock(){ 
         return chance.integer({ min: 1, max: 20000 })

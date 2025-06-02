@@ -4,6 +4,9 @@ import Logger from "../utils/Logger";
 
 export class JsonType { 
 
+    static isNumeric:boolean = false;
+    static typeName:string = "json";
+
     static mock(){ 
         return {
             a: chance.integer({ min: -200, max: 200 }),

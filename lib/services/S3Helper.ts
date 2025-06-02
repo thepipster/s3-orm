@@ -17,7 +17,6 @@ import {
 import { Upload } from "@aws-sdk/lib-storage";
 import { Readable } from 'stream';
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import Logger from "../utils/Logger";
 import AuthError from "../errors/AuthError";
 
 export type S3Options = {

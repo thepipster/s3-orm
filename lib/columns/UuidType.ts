@@ -4,6 +4,9 @@ const chance = new Chance();
 
 export class UuidType {
     
+    static isNumeric:boolean = false;
+    static typeName:string = "uuid";
+
     static mock(){ 
         return chance.guid({version: 4});
     }

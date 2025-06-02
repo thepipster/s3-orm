@@ -1,5 +1,4 @@
 
-import Logger from "../../lib/utils/Logger";
 import {JsonType} from "../../lib/columns/JsonType";
 import _ from "lodash";
 
@@ -31,6 +30,14 @@ const test = {
 
 
 describe('JsonType', () => {
+
+    test('name', () => {
+        expect(JsonType.typeName).toEqual('json');
+    })
+
+    test('isNumeric', () => {
+        expect(JsonType.isNumeric).toEqual(false);
+    })
 
     test('encode', () => {
 

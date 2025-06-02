@@ -4,6 +4,9 @@ const chance = new Chance();
 
 export class ArrayType {  
     
+    static isNumeric:boolean = false; 
+    static typeName:string = "array";   
+    
     static mock(){ 
         return chance.n(chance.word, 5);
     }
