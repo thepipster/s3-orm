@@ -279,6 +279,7 @@ type QueryOptions = {
 | resetIndex() | Clears all the indices and attempts to rebuild them. Note this can take some time for large data sets |
 | exists(id) | Checks if a document exists with this id (this is faster than using a find) |
 | max(field) | Gets the maximum value for this field name. The field must be a numeric type |
+| min(field) | Gets the minimum value for this field name. The field must be a numeric type |
 | count(query) | Gets a count of the number of documents for the given query |
 | distinct(field, query) | Returns an array of disctinct values for the given field. You can optionally pass a querry to restrict the set of documents looked at |
 | remove(id) | Delete a document with the given id |
@@ -297,7 +298,6 @@ type QueryOptions = {
 | ---- | ----------- |
 | connect(config) | Create a new instance of the s3 ORM ("storm"), passing in config options |
 | listModels() | Give a list of all the models currently registered |
-
 
 
 # S3 Setup
