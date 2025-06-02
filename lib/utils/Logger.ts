@@ -12,9 +12,9 @@ export default class Logger {
 
     private static _logger: winston.Logger;
 
-    static showStackTrace: boolean;
+    static showStackTrace: boolean = true;
 
-    static stackDepth: number = 2;
+    static stackDepth: number = 2
 
     static init() {
         const myFormat = format.printf((info) => {

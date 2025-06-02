@@ -270,15 +270,40 @@ export class AwsEngine {
      * @returns 
      */
     async zGetMax(setName: string, scores?: boolean): Promise<string | {score: number, val: string}> {
-        let key = EngineHelpers.getKey('zsets', setName)+'/';
-        let res = await this.aws.list(key);
         
+        let key = EngineHelpers.getKey('zsets', setName)+'/';
+        let res = await this.aws.list(key);        
         let item:any = res.pop();
 
         key = item.Key.split('/').pop();
         let parts = key.split('###');
+
         parts[1] = EngineHelpers.decode(parts[1]);
 
+        //Logger.debug(`zGetMax() parts = `, parts);
+        if (scores){
+            return {
+                score: parseInt(parts[0]),
+                val: parts[1]
+            }    
+        }
+
+        return parts[1];
+
+    }
+
+    async zGetMin(setName: string, scores?: boolean): Promise<string | {score: number, val: string}> {
+        
+        let key = EngineHelpers.getKey('zsets', setName)+'/';
+        let res = await this.aws.list(key);        
+        let item:any = res[0];
+
+        key = item.Key.split('/').pop();
+        let parts = key.split('###');
+
+        parts[1] = EngineHelpers.decode(parts[1]);
+
+        //Logger.debug(`zGetMin() parts = `, parts);
         if (scores){
             return {
                 score: parseInt(parts[0]),

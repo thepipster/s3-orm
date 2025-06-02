@@ -3,7 +3,8 @@ import _ from "lodash";
 import Chance from "chance";
 import {Column, Entity, Model, Query, Storm} from "../index";
 import {Profiler} from "../utils/Profiler";
-
+import {people} from "./test-data";
+import {Person} from "./Person";
 const chance = new Chance();
 
 Storm.connect({
@@ -26,43 +27,7 @@ setTimeout( async ()=> {
     //const models = await storm.listModels();
     //Logger.debug(`Models = `, models);
 
-    @Entity({expires: 100})
-    class Person extends Model {
 
-        //@PrimaryGeneratedColumn()
-        //id: number;
-
-        @Column({unique: true})
-        email: string;
-
-        @Column({type: 'integer', index: true})
-        age: number;
-
-        @Column({type: 'float', index: true})
-        score: number;
-
-        @Column({index: true})
-        fullName: string;
-
-        @Column({index: true})
-        lastIp: string;
-
-        @Column({index: true})
-        lastLogin: Date;
-
-        @Column({type: 'json'})
-        preferences: object;
-
-        @Column({type: 'array'})
-        tags: string[];
-
-        @Column({default: 'user', index: true})
-        level: string;
-
-        @Column({default: 'active', index: true})
-        status: string;
-
-    }
 
     async function createPerson(): Promise<Person> {
         let tmp:Person = new Person({
@@ -81,99 +46,61 @@ setTimeout( async ()=> {
         return await tmp.save();
     }
 
-    const No = 10;
-    let list:Person[] = await Person.find({});
-
-    //for (let i=0; i<list.length; i+=1){
-    //    Logger.debug(list[i]);
-    //}
-
-    //await createPerson();
-
-    Logger.debug(`Found ${list.length} items`);
-
-
-    if (list.length < No){
-        for (let i=0; i<No; i+=1){
-            Profiler.start('createPerson');
-            let tmp:Person = await createPerson();            
-            let ms:number = Profiler.stop('uploadWithNumber');
-            Logger.debug(`[Person] Saved with id = ${tmp.id}, ${tmp.email} - took ${ms}ms`, );
+    async function removePeople(){
+        let people:Person[] = await Person.find({});
+        for (let i=0; i<people.length; i+=1){
+            let tmp:Person = people[i];
+            Logger.debug(`Removing ${tmp.fullName}, ${tmp.age}, (id = ${tmp.id})`);
+            await tmp.remove();
         }
+        Logger.debug(`Removed ${people.length} people`);
     }
 
-    Profiler.showResults();
+    async function loadPeople(){
+        let peeps:Person[] = [];
+        for (let i=0; i<people.length; i+=1){
+            
+            let tmp: Person = await Person.findOne({where: {id: people[i].id}});
+            
+            if (!tmp) {
+                Logger.error(`Could not find ${people[i].id}. Creating ${people[i].id}`);
+                tmp = new Person(people[i]);
+                await tmp.save();
+            } 
+
+            Logger.debug(`Loaded ${tmp.fullName}, ${tmp.age}, (id = ${tmp.id})`);
+            peeps.push(tmp);
+        }
+        return peeps;
+    }
+
+    
+    Logger.debug('Loading people');
+    await removePeople();
+    let list:Person[] = await loadPeople();
+
+    Logger.debug(`We have ${list.length} people in our test data.`);
 
     // Test queries
-
-    //let qry = {fullName: 'bob'};
-    //let qry = {fullName: 'ob'};
-    //let qry = {age: 20};
-    //let qry = {age: {$gte: 19}};
-    //let qry = {fullName: 'bob', age: {$gte: 19}};
-    //let qry:Query = {score:{Op.$gte: 50.56}};
+    const queries = [
+        //{query: {}},
+        {query: {fullName: 'Mamie Ryan'}},
+        {query: {age: 20}},
+        {query: {age: {$gte: 19}}},
+        {query: {fullName: 'bob', age: {$gte: 19}}},
+        //{score:{Op.$gte: 50.56}}
+    ];
     
+    for (let i=0; i<queries.length; i+=1){
+        Profiler.start('test-query');
+        let qry = queries[i];
+        Logger.debug(`Query ${i+1}: ${JSON.stringify(qry)}`);
+        let res = await Person.find({where: qry.query});
+        Logger.debug(`Result ${i+1}, found ${res.length}`, res);
+        Profiler.stop('test-query');
+    }
     
-    Logger.debug(`Age > 40`, await Person.find({
-        where: {age: {$gte: 40}},
-        order: 'ASC',
-        limit: 1
-    }));
-
-
-
-/*
-    
-    let objectList = await Model.find({});
-
-    let tmp = new Model(Model.generateMock());
-    tmp.email = objectList[0].email;
-    await tmp.save();
-
-
-    //await Model.resetIndex();
-
-    //let qry = {fullName: 'bob'};
-    //let qry = {fullName: 'ob'};
-    //let qry = {age: 20};
-    //let qry = {age: {$gte: 19}};
-    //let qry = {fullName: 'bob', age: {$gte: 19}};
-    let qry = {score: 50.56};
-
-    let items = await Model.getIds(qry);
-    Logger.debug('query = ', qry);
-    Logger.debug('result = ', items);
-
-
-    //let names = await Model.distinct('fullName', qry);
-    //Logger.debug(names)
-
-
-    let ages = await Model.max('age');
-    Logger.debug('ages = ', ages)
-
-    //let indx = Indexing()
-
-    //let idList = Indexing.getIdsForVal();
-
-    //let test = Model.generateMock();
-
-    //Logger.debug(test.toJson());
-    //Logger.debug(Model._model());
-    //Logger.debug(tmp.toJson());
-
-    //await tmp.save();
-
-    // Now delete
-    
-    //for (let i=0; i<objectList.length; i+=1){
-    //    const obj = objectList[i];
-    //    await obj.remove();
-   // }
-    
-   let modelNames = await storm.listModels();
-   Logger.debug('model names = ', modelNames);
-*/
+    Profiler.showResults();
 
 }, 100);
 

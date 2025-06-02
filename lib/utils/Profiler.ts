@@ -1,11 +1,11 @@
 import Logger from "./Logger";
-
+ const { performance } = require('perf_hooks');
 
 type ProfilerData = {
     label: string;
     count: number; // number of times this label was called 
     total: number; // total time spent in this label
-    time: number[]; // prev time this label was called
+    time: number; // prev time this label was called
 }   
 
 export class Profiler {
@@ -16,18 +16,31 @@ export class Profiler {
     * Start a timer, with a given label
     */
     static start(label: string){
-        this.data.set(label, {
-            label: label,
-            count: 0,
-            total: 0,
-            time: process.hrtime()
-        });
+
+        const startTime = performance.now();
+
+        if (!this.data.has(label)){
+            this.data.set(label, {
+                label: label,
+                count: 0,
+                total: 0,
+                time: startTime
+            });  
+        }
+        else {
+            let prev: ProfilerData = this.data.get(label);
+            prev.time = startTime;  
+            this.data.set(label, prev);
+        }
+
+
     };
 
     /**
     * Stop a timer, with a given label
     */
     static stop(label: string){
+
         try {
             
             let prev: ProfilerData = this.data.get(label);
@@ -36,9 +49,8 @@ export class Profiler {
                 return
             }
 
-            let elapsed = Profiler.__getElapsedTime(prev.time);
-            //let delta = parseFloat(elapsed.milliseconds + elapsed.seconds*1000)
-            prev.time = process.hrtime();
+            let elapsed = performance.now() - prev.time;
+            prev.time = performance.now();
             prev.count += 1;
             prev.total += elapsed;
 
@@ -73,30 +85,6 @@ export class Profiler {
         Logger.info(msg);
         
     };
-
-    /**
-     * Get the current unix epoch time stamp, in high precision milliseconds
-     * @returns 
-     */
-    private static __getTimestamp(): number {        
-        const start = process.hrtime();
-        const end = process.hrtime(start);        
-        const seconds: number = end[0];
-        const nanoseconds : number = end[1];
-        const milliseconds : number = (seconds * 1000) + (nanoseconds / 1000000);
-        return milliseconds;
-    }
-
-    private static __getElapsedTime(startTimestamp): number {
-        const end = process.hrtime(startTimestamp);
-        const seconds: number = end[0];
-        const nanoseconds : number = end[1];
-        const milliseconds : number = (seconds * 1000) + (nanoseconds / 1000000);
-        return milliseconds;
-
-    }
-        
-
 
 
 }

@@ -31,8 +31,10 @@ export function Column(params?: ColumnParams)
         // and we look up type from member variable type
         const type = (params.type) ? params.type : t.name.toLowerCase();
         
+        //Logger.debug(`Column type for ${className}.${propertyKey} is ${type}`);
+        
         let isNumeric = false;
-        if (type == 'number' || type == 'integer' || type == 'float'){
+        if (type == 'number' || type == 'integer' || type == 'float' || type == 'date'){
             isNumeric= true;
         }
 
@@ -61,6 +63,8 @@ export function Column(params?: ColumnParams)
         };
 
         //Logger.debug(`[${className}] Column schemd for ${propertyKey} (native type = ${t.name})`, col);
+
+                            
 
         if (params.encode && typeof params.encode == 'function'){
             col.encode = params.encode;
@@ -121,6 +125,7 @@ export function Column(params?: ColumnParams)
         }
 
         // Register the column in ModelMetaStore
+        //Logger.debug(`Registering column ${className}.${propertyKey} (${col.type})`, col );
         ModelMetaStore.addColumn(className, col);
 
 

@@ -140,24 +140,42 @@ export class Model {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async max(fieldName: string){
+    static async max(fieldName: string): Promise<number | null> {
         const modelName = this._name();        
         const model = ModelMetaStore.getColumn(modelName, fieldName);
         if (!model.isNumeric){
             throw new QueryError(`${modelName}.${fieldName} is not numeric!`);
         }
-        return await Storm.s3().zGetMax(`${modelName}/${fieldName}`, false);
+        const zmax = await Storm.s3().zGetMax(`${modelName}/${fieldName}`, true);
+        return (model.type == 'float') ? parseFloat(zmax.score) : parseInt(zmax.score, 10);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async count(query: Query | QueryOptions) {
+    static async min(fieldName: string): Promise<number | null> {
+        const modelName = this._name();        
+        const model = ModelMetaStore.getColumn(modelName, fieldName);
+        if (!model.isNumeric){
+            throw new QueryError(`${modelName}.${fieldName} is not numeric!`);
+        }
+        const zmax = await Storm.s3().zGetMin(`${modelName}/${fieldName}`, true);
+        return (model.type == 'float') ? parseFloat(zmax.score) : parseInt(zmax.score, 10);
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
+    static async count(query: Query | QueryOptions): Promise<number>  {
         let docIds = await this.getIds(query);
         return docIds.length;
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
+    /**
+     * Normalize the query to ensure it has the correct structure
+     * @param query The query to normalize
+     * @returns Normalized query options
+     */
     private static normalizeQuery(query: Query | QueryOptions): QueryOptions {
         if ('where' in query || 'order' in query || 'limit' in query || 'offset' in query || 'scores' in query) {
             return query as QueryOptions;
@@ -269,13 +287,14 @@ export class Model {
         await Promise.map(keys, async (key)=>{
 
             const defn = model[key];
-            const val = this[key];   
-
+            
             //Logger.debug(`${chalk.default.green(modelName)}.${chalk.default.yellow(key)}] val = ${val}`);
 
             // Check if this key is unique and already exists (if so, throw an error)
             if (defn.unique) {                    
-                //Logger.debug(`Checking if ${chalk.default.green(modelName)}.${chalk.default.yellow(key)} is unique, val = ${val}`);
+                // In some cases, like a date, the value in the instance field will be a Date object,
+                // so we need to parse it to an internal representation before indexing it.
+                const val = Model.parseValue(modelName, key, this[key]);   
                 let alreadyExists = await indx.isMemberUniques(key, val);    
                 if (alreadyExists) {
                     throw new UniqueKeyViolationError(`Could not save as ${key} = ${val} is unique, and already exists`);
@@ -284,7 +303,7 @@ export class Model {
 
             //Logger.debug(`${green(modelName)}.${yellow(key)} = ${val}`);
         
-            fieldStrings[key] = defn.encode(val);
+            fieldStrings[key] = defn.encode(this[key]);
 
             //if (typeof defn.onUpdateOverride == "function") {
             //    this[key] = defn.onUpdateOverride();
@@ -316,7 +335,10 @@ export class Model {
             
             try {
                 //Logger.debug(`[${chalk.default.green(modelName)}.${chalk.default.yellow(key)}] val = ${this[key]}, prevVal = ${oldValues[key]}`);
-                await indx.setIndexForField(key, this[key], oldValues[key]);
+                // In some cases, like a date, the value in the instance field will be a Date object,
+                // so we need to parse it to an internal representation before indexing it.        
+                const val = Model.parseValue(modelName, key, this[key]);           
+                await indx.setIndexForField(key, val, oldValues[key]);
             } 
             catch (err) {
                 if (err instanceof UniqueKeyViolationError) {
@@ -350,6 +372,13 @@ export class Model {
         return this;
 
 
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
+    private static parseValue(modelName: string, key: string, val: string){
+        const defn: ColumnSchema = ModelMetaStore.getColumn(modelName, key);        
+        return (defn.encode) ? defn.encode(val) : val;
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -392,7 +421,7 @@ export class Model {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static async findOne(query: Query | QueryOptions) {
+    static async findOne(query: Query | QueryOptions): Promise<Model | Model[] | null> {
         try {
             let docIds = await this.getIds(query);
 
@@ -404,7 +433,7 @@ export class Model {
         } catch (err) {
             Logger.error(`[${this._name()}] Error with findOne(), query = `, query);
             Logger.error(err);
-            return [];
+            return null;
         }
     }
 
@@ -431,7 +460,7 @@ export class Model {
      * @param {*} query The query, e.g. {name:'fred'} or {name:'fred', age:25}. Note that
      * query keys must be indexed fields in the schema.
      */
-    static async find(query: Query | QueryOptions) {
+    static async find(query: Query | QueryOptions): Promise<Model[] | null> {
 
         try {
             
@@ -478,10 +507,30 @@ export class Model {
      */
     static async getIds(query: Query | QueryOptions) {
         
+        const modelName: string = this._name();
+
         // Allow for simple queries to be passed in
         query = this.normalizeQuery(query);
 
-        const modelName: string = this._name();
+        // Parse any query values
+
+        if (query.where && typeof query.where === 'object') {
+            for (let key in query.where) {
+                
+                if (typeof query.where[key] === 'object') {
+                    for (let subkey in query.where[key]) {
+                        query.where[key][subkey] = Model.parseValue(modelName, key, query.where[key][subkey]);
+                    }
+                }
+                else {
+                    query.where[key] = Model.parseValue(modelName, key, query.where[key]);
+                }
+
+                //Logger.info(`[${modelName}.getIds] Parsing query value for ${key} = `, query.where[key]);
+                
+            }
+        }
+
         const indx = new Indexing(null, modelName);
         var queryParts = [];
         var results = [];
@@ -519,11 +568,14 @@ export class Model {
         for (let key in query.where){
 
             const defn: ColumnSchema = ModelMetaStore.getColumn(modelName, key);
-            const keyVal = query.where[key];
+
+            let keyVal = query.where[key];
             let qry: any = {key, type: 'basic', value: keyVal};
 
             if (defn.isNumeric) {
+                
                 qry.type = 'numeric';
+                
                 // Handle MongoDB-style operators if present
                 if (typeof keyVal === 'object' && !Array.isArray(keyVal)) {
                     // For numeric fields, if no range operators are provided, treat the value as an exact match
@@ -546,6 +598,10 @@ export class Model {
 
         // Now process each part of the query...
         await Promise.map(queryParts, async (qry) => {
+    
+            const defn: ColumnSchema = ModelMetaStore.getColumn(modelName, qry.key);
+            //const val = (defn.parse) ? defn.parse(query.where[key]) : query.where[key];
+
             if (qry.type == 'numeric'){
                 if (typeof qry.value == 'number'){
                     qry.value = {$gte: qry.value, $lte: qry.value};

@@ -18,12 +18,12 @@ export class Storm {
     static rootPath: string = "s3orm/";
     private static _aws: S3Helper;
 
-    static connect(opts: S3Options){
+    static connect(opts: any) {
         //Logger.debug(`Connection.init()`);
         this._aws = new S3Helper(opts);
         this.engine = new AwsEngine(opts);
-        this.rootPath = opts.prefix;
-        if (this.rootPath.slice(-1) !== '/'){
+        this.rootPath = opts.prefix || '';
+        if (this.rootPath && this.rootPath.slice(-1) !== '/'){
             this.rootPath += '/';
         }
     }

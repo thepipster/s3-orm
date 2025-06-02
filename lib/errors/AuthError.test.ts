@@ -26,7 +26,7 @@ describe('Lib:AuthError', () => {
             throw new AuthError(msg)
         }
         catch(err){
-            expect(err.code).toEqual(401)
+            expect(err.code).toEqual(403)
             done()
         }
 

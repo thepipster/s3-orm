@@ -1,6 +1,11 @@
 import {isNull, isUndefined} from "lodash";
 import Logger from "../utils/Logger";
 
+/**
+ * A base class for a column type. We have to deal with 2 scenarios:
+ * 2. encode() - We saving a valie to the database, so we need to encoded it into an internal value
+ * 3. decode() - we are loading a value from the database, so we need to decode it back into a value
+ */
 export class BaseType {
     
     static isNumeric:boolean = false;
@@ -18,37 +23,4 @@ export class BaseType {
     static decode(val: any){         
         return val;
     }
-
-    /**
-     * Check to see if the data is already encoded
-     * @param {*} str 
-     */
-    //_isEncoded(str){
-    //    if (str.slice(0, this.encodedMarker.length) == this.encodedMarker){
-    //        return true;
-    //    }
-    //    return false;
-    //}
-
-    /**
-     * Remove any generic markers, such as encoded marker
-     * @param {*} str 
-     */
-    //_uncleanString(str){
-    //    return str.slice(this.encodedMarker.length);
-    //}
-
-    /**
-     * Deal with null or undefined values that got encoded and mark as encoded
-     * to avoid double encoding bugs
-     * @param {*} str 
-     * @returns 
-     */
-    //_cleanString(str){
-    //    if (!str || str == 'null' || str == 'undefined'){
-    //        return '';
-    //    }
-    //    return str;
-    //}
-
 }

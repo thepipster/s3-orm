@@ -22,7 +22,7 @@ class Indexing {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    constructor(id, modelName){
+    constructor(id: number, modelName: string){
         this.id = id;
         this.schema = ModelMetaStore.get(modelName);
         this.modelName = modelName;
@@ -70,7 +70,7 @@ class Indexing {
      * @param {*} val 
      * @returns 
      */
-    async isMemberUniques(fieldName, val){
+    async isMemberUniques(fieldName: string, val: string){
         
         if (this._isNull(val)){
             throw new Error(`The value must be a string!`);
@@ -281,12 +281,13 @@ class Indexing {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    async addNumeric(fieldName, val){
+    async addNumeric(fieldName: string, val: number){
         if (this._isNull(val)){
             return;
         }          
         const fieldDef: ColumnSchema = this._checkKey(fieldName);
         const numericVal = Number(val);
+
         if (isNaN(numericVal)) {
             throw new Error(`Invalid numeric value for field ${fieldName}: ${val}`);
         }

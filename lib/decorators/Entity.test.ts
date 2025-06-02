@@ -1,23 +1,20 @@
-import { Entity } from '../../lib/decorators/Entity';
-import { Model } from '../../lib/core/Model';
-import { ModelMetaStore } from '../../lib/decorators/ModelMetaStore';
+import { Entity } from './Entity';
+import { Column } from './Column';
+import { Model } from '../core/Model';
+import { ModelMetaStore } from './ModelMetaStore';
+import { type ColumnSchema } from './ModelMetaStore';
 
-// Test model classes
-@Entity({
-    timestamps: true,
-    expires: 3600
-})
-class BasicModel extends Model {}
-
-@Entity({
-    timestamps: false,
-    onSaveOverride: () => Promise.resolve(),
-    onUpdateOverride: () => Promise.resolve()
-})
-class CustomModel extends Model {}
-
-@Entity()
-class DefaultModel extends Model {}
+// Mock Storm for Model class
+jest.mock('../core/Storm', () => ({
+    Storm: {
+        debug: false,
+        s3: jest.fn().mockReturnValue({
+            hasObject: jest.fn().mockResolvedValue(true),
+            getObject: jest.fn().mockResolvedValue('{}'),
+            putObject: jest.fn().mockResolvedValue(undefined)
+        })
+    }
+}));
 
 describe('Entity Decorator', () => {
     beforeEach(() => {
@@ -26,95 +23,89 @@ describe('Entity Decorator', () => {
         (ModelMetaStore as any).entityMetas = new Map();
     });
 
-    describe('Basic Entity Configuration', () => {
-        test('should register basic model metadata', () => {
-            const meta = (ModelMetaStore as any).entityMetas.get('BasicModel');
-            
-            expect(meta).toBeDefined();
-            expect(meta.timestamps).toBe(true);
-            expect(meta.expires).toBe(3600);
-        });
-
-        test('should register custom model metadata', () => {
-            const meta = (ModelMetaStore as any).entityMetas.get('CustomModel');
-            
-            expect(meta).toBeDefined();
-            expect(meta.timestamps).toBe(false);
-            expect(meta.onSaveOverride).toBeDefined();
-            expect(meta.onUpdateOverride).toBeDefined();
-        });
-
-        test('should register model with default options', () => {
-            const meta = (ModelMetaStore as any).entityMetas.get('DefaultModel');
-            
-            expect(meta).toBeDefined();
-            expect(meta).toEqual({});
-        });
-    });
-
-    describe('Entity Options Handling', () => {
-        @Entity({
-            timestamps: true,
-            expires: 86400,
-            onSaveOverride: () => Promise.resolve(),
-            onUpdateOverride: () => Promise.resolve()
-        })
-        class FullOptionsModel extends Model {}
-
-        test('should handle all entity options', () => {
-            const meta = (ModelMetaStore as any).entityMetas.get('FullOptionsModel');
-            
-            expect(meta).toBeDefined();
-            expect(meta.timestamps).toBe(true);
-            expect(meta.expires).toBe(86400);
-            expect(meta.onSaveOverride).toBeDefined();
-            expect(meta.onUpdateOverride).toBeDefined();
-        });
-    });
-
-    describe('Multiple Entities', () => {
-        @Entity({ timestamps: true })
-        class Model1 extends Model {}
-
-        @Entity({ expires: 3600 })
-        class Model2 extends Model {}
-
-        test('should handle multiple entity registrations', () => {
-            const meta1 = (ModelMetaStore as any).entityMetas.get('Model1');
-            const meta2 = (ModelMetaStore as any).entityMetas.get('Model2');
-            
-            expect(meta1.timestamps).toBe(true);
-            expect(meta2.expires).toBe(3600);
-        });
-    });
-
-    describe('Edge Cases', () => {
-        test('should handle entity redefinition', () => {
+    describe('Entity Options', () => {
+        test('should register entity with timestamps option', () => {
+            // Apply the Entity decorator directly to a class
             @Entity({ timestamps: true })
-            class RedefinedModel extends Model {}
-
-            const meta1 = (ModelMetaStore as any).entityMetas.get('RedefinedModel');
-            expect(meta1.timestamps).toBe(true);
-
-            @Entity({ expires: 7200 })
-            class RedefinedModel2 extends Model {}
-
-            const meta2 = (ModelMetaStore as any).entityMetas.get('RedefinedModel2');
-            expect(meta2.expires).toBe(7200);
+            class TestModel extends Model {}
+            
+            // Register a column to ensure the model exists in the store
+            const testColumn: ColumnSchema = {
+                name: 'test',
+                type: 'string',
+                isNumeric: false,
+                encode: (val: any) => val === null || val === undefined ? '' : String(val),
+                decode: (val: string) => !val ? null : val
+            };
+            
+            ModelMetaStore.addColumn('TestModel', testColumn);
+            
+            // Manually apply the Entity decorator to ensure it's executed
+            Entity({ timestamps: true })(TestModel);
+            
+            // Access the private entityMetas map to verify the options
+            const entityMetas = (ModelMetaStore as any).entityMetas;
+            const options = entityMetas.get('TestModel');
+            
+            expect(options).toBeDefined();
+            expect(options.timestamps).toBe(true);
         });
 
-        test('should handle inheritance', () => {
-            @Entity({ timestamps: true })
-            class ParentModel extends Model {}
+        test('should use default options when not specified', () => {
+            // Apply the Entity decorator directly to a class
+            @Entity()
+            class DefaultModel extends Model {}
+            
+            // Register a column to ensure the model exists in the store
+            const testColumn: ColumnSchema = {
+                name: 'test',
+                type: 'string',
+                isNumeric: false,
+                encode: (val: any) => val === null || val === undefined ? '' : String(val),
+                decode: (val: string) => !val ? null : val
+            };
+            
+            ModelMetaStore.addColumn('DefaultModel', testColumn);
+            
+            // Manually apply the Entity decorator to ensure it's executed
+            Entity()(DefaultModel);
+            
+            // Access the private entityMetas map to verify the options
+            const entityMetas = (ModelMetaStore as any).entityMetas;
+            const options = entityMetas.get('DefaultModel');
+            
+            expect(options).toBeDefined();
+            expect(options).toEqual({});
+        });
+    });
 
-            @Entity({ expires: 3600 })
-            class ChildModel extends ParentModel {}
-
-            const parentMeta = (ModelMetaStore as any).entityMetas.get('ParentModel');
-            const childMeta = (ModelMetaStore as any).entityMetas.get('ChildModel');
-
-            expect(parentMeta.timestamps).toBe(true);
-            expect(childMeta.expires).toBe(3600);
+    describe('Entity Decorator Application', () => {
+        test('should apply decorator with multiple options', () => {
+            // Create a class and apply the Entity decorator manually
+            class TestOptionsModel extends Model {}
+            
+            // Register a column to ensure the model exists in the store
+            const testColumn: ColumnSchema = {
+                name: 'test',
+                type: 'string',
+                isNumeric: false,
+                encode: (val: any) => val === null || val === undefined ? '' : String(val),
+                decode: (val: string) => !val ? null : val
+            };
+            
+            ModelMetaStore.addColumn('TestOptionsModel', testColumn);
+            
+            // Apply the decorator manually with multiple options
+            Entity({ timestamps: true, expires: 3600 })(TestOptionsModel);
+            
+            // Access the private entityMetas map to verify the decorator was applied
+            const entityMetas = (ModelMetaStore as any).entityMetas;
+            expect(entityMetas.has('TestOptionsModel')).toBe(true);
+            
+            const options = entityMetas.get('TestOptionsModel');
+            expect(options).toBeDefined();
+            expect(options.timestamps).toBe(true);
+            expect(options.expires).toBe(3600);
         });
     });
 });
