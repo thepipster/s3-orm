@@ -1,0 +1,40 @@
+{
+    "version": "2.4.2",
+    "compilerOptions": {
+        "emitDecoratorMetadata": true,
+        "esModuleInterop": true, // import common modules as ES6 Modules
+        "experimentalDecorators": true,
+        "lib": [
+            "es5",
+            "es6",
+            "dom"
+        ],
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "noEmitOnError": true,
+        "outDir": "./dist",
+        "rootDir": ".",
+        "sourceMap": true,
+        // "strict": true, // we should consider setting this to true
+        "target": "es6",
+        "typeRoots": [
+            "lib",
+            "./node_modules/@types"
+        ],
+        "types": [
+            "node",
+            "jest",
+            "chai",
+            "sinon"
+        ]
+    },
+    "include": [
+        "./lib/**/*"
+    ],
+    "exclude": [
+        "coverage",
+        "keys",
+        "node_modules",
+        "dist"
+    ]
+}

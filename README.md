@@ -15,84 +15,211 @@ yarn add s3-orm
 npm install s3-orm
 ```
 
-## Documentation
+# Basic usage
 
-### Terminology
+```ts
+
+const {Storm, Entity, Column} = require('s3-orm');
+
+Storm.connect({
+    bucket: process.env.AWS_BUCKET,
+    prefix: 's3orm/',
+    region: process.env.AWS_REGION,
+    rootUrl: process.env.AWS_CLOUDFRONT_URL,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_ACCESS_SECRET,
+});
+
+
+// Create an instance of the storm ORM with this engine
+const storm = new Storm(config);
+
+// Create a schema
+@Entity()
+class Person extends Model {
+
+    @Column({unique: true})
+    email: string;
+
+    @Column({type: 'integer', index: true})
+    age: number;
+
+    @Column({type: 'float', index: true})
+    score: number;
+
+    @Column({index: true})
+    fullName: string;
+
+    @Column({index: true})
+    lastIp: string;
+
+    @Column({index: true})
+    lastLogin: Date;
+
+    @Column({type: 'json'})
+    preferences: object;
+
+    @Column({type: 'array'})
+    tags: string[];
+
+    @Column({default: 'user', index: true})
+    level: string;
+
+    @Column({default: 'active', index: true})
+    status: string;
+
+}
+
+// Now you can create a document using this schema (model)
+let pete = new Person();
+pete.fullName = 'Pete The Cat';
+pete.age = 12;
+
+// Save this instance to S3 (or whatever back-end engine you are using)
+await pete.save();
+
+// You can also use the generateMock method to create random data for testing
+let randomData = Person.generateMock();
+let rando = new Person(randomData);
+await rando.save();
+
+// Examples of some basic queries
+let people = await Person.find({
+    where: {
+        age: {$gte: 12}
+    }
+});
+
+let people = await Person.find({
+    where: {
+        fullName: 'Cat'
+    }
+});
+
+```
+
+# Terminology
 
 * **schema**: Schema is the data definition for a model, i.e. it describes the data used by a model.
 * **model**: A model is a class that encapsulates the data schema, and allows you to create instances of that model.
 * **document**: This is an instance of a model, i.e. the underlying data decorated with the model methods.
 * **field**: The key of the schema, i.e. the "column" name of your documents.
 
-### Schema definition
+# Schema definition
 
 A schema object is required when defining a model. This is a basic object with key/values where the value is the field defintion. A field definition can consist simply of the field type, or be an object with a `type` key and other optional values set such as an `index`. Here is an example of such a schema;
 
-```js
-const schema =  {
-    email: {type: DataTypes.String, unique: true},
-    age: {type: DataTypes.Integer, index: true},
-    score: {type: DataTypes.Float, index: true},
-    fullName: {type: DataTypes.String, index: true},
-    lastIp: DataTypes.String,
-    lastLogin: {type: DataTypes.Date, index: true},  
-    preferences: DataTypes.Json, 
-    tags: DataTypes.Array, 
-    level: { type: DataTypes.String, default: 'user', index: true },
-    status: { type: DataTypes.String, default: 'active' }
-}
+```ts
+    @Entity()
+    class Person extends Model {
+
+        @Column({unique: true})
+        email: string;
+
+        @Column({type: 'integer', index: true})
+        age: number;
+
+        @Column({type: 'float', index: true})
+        score: number;
+
+        @Column({index: true})
+        fullName: string;
+
+        @Column({index: true})
+        lastIp: string;
+
+        @Column({index: true})
+        lastLogin: Date;
+
+        @Column({type: 'json'})
+        preferences: object;
+
+        @Column({type: 'array'})
+        tags: string[];
+
+        @Column({default: 'user', index: true})
+        level: string;
+
+        @Column({default: 'active', index: true})
+        status: string;
+
+    }
+
 ```
 
-### Field definition
+## Model definition (`@Entity` decorator)
 
-A field can have the following keys
+Model definitions are established by using the `@Entity` decorator, with the following options;
 
 | name | Description |
 | ---- | ----------- |
-| type | The field data type, such as `DataTypes.Number` |
-| index | Sets an index for a field, i.e. enables you to query on this field |
-| unique | Sets an unique for a field, i.e. enforces uniqueness for this field and enables you to query on it  |
-| default | Specify a default value for this field, this can also be a function |
-| defaultValue | Same as default |
-| onUpdateOverride | A function that is called when the document is saved, the field value is set by the output of this function during the save |
+| expires | Automatically delete any instances of this Model after x seconds |
+| timestamps | Default is true. If set to true, automatically adds and updates `created` and `modified` Date columns. |
+| unique | Enforces uniqueness for this column and enables you to query on it  |
+| default | Specify a default value for this column, this can also be a function |
 
-#### Field types
+## Column definition (`@Column` decorator)
 
-```js
-DataTypes.Id    // Integer, id field, this is automatically added to all models
-DataTypes.Uuid    // String, a uuid v4 field, will generate a uuid automically if no value set during a save
-DataTypes.Json    // Json object
-DataTypes.Float    // Float
-DataTypes.Number    // Integer
-DataTypes.Integer    // Integer
-DataTypes.String    // String
-DataTypes.Boolean    // Boolean
-DataTypes.Array    // Simple array of basic types
-DataTypes.Date    // Date
+Column definitions are established by using the `@Column` decorator, with the following options;
+
+| name | Description |
+| ---- | ----------- |
+| type | For finer grain control you can be more specific about the data type, options include 'integer', 'float', 'json' or 'array' |
+| index | Sets an index for a column, i.e. enables you to query on this column |
+| unique | Sets an unique for a column, i.e. enforces uniqueness for this column and enables you to query on it  |
+| default | Specify a default value for this column, this can also be a function |
+| encode | Converts the column value to a string to be stored into s3 when the document is saved, you can over-ride to handle cases like when you want to encrypt the column value |
+| decode | Converts the column value back to it's correct type from the string stored in s3 when the document is loaded, you can over-ride to handle cases like when you want to decrypt the column value |
+
+### TypeScript Type
+
+```ts
+type ColumnParams = {
+    type?:  string, 
+    index?: boolean;
+    unique?: boolean;
+    default?: any;
+    encode?: callback;
+    decode?: callback;
+};
 ```
 
-### Queries
+## Queries
 
 You can query any data type that you have an index set for. If an index is not set, all queries will throw a no-index error. A query is simply an object with key/values that correspond to the query you wish to perform. For numeric and date fields you can use the `$gt`, `$gte`, `$lte` and `$lt` operators to bound queries. If multiple keys exists, then the query will be a `and` of all the keys. An `or` operator is currently not support, but planned for the future. Example queries are;
 
-```js
-// Query for all documents where the fullName field contains a substring of 'bob'
+```ts
+// Query for all documents where the fullName column contains a substring of 'bob'
 qry = {fullName: 'bob'};
-// Query for all documents where the fullName field contains a substring of 'ob' (so bob would match this)
+// Query for all documents where the fullName column contains a substring of 'ob' (so bob would match this)
 qry = {fullName: 'ob'};
 // Query for all documents where the age = 20
 qry = {age: 20};
 // Query for all documents where the age is greater than or equal to 19
 qry = {age: {$gte: 19}};
-// Query for all documents where the fullName field contains a substring of 'bob' AND the age is greater than or equal to 19
+// Query for all documents where the fullName column contains a substring of 'bob' AND the age is greater than or equal to 19
 qry = {fullName: 'bob', age: {$gte: 19}};
 // Query for all documents where the score is les than 50.56
 qry = {score: {$lt: 50.56}};
 ```
 
-### Query options
+### TypeScript Type
 
-Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additional options, these include;
+```ts
+type Query = {
+    [key: string]: any;
+    $gt?: number;
+    $gte?: number;
+    $lt?: number;
+    $lte?: number;
+}
+```
+
+### Queries with options
+
+*Note* any function ((`find`, `findOne`, `getIds`, `count`, `distinct`) that takes a query, accepts either the simple query form above (`Query`) or a more complex form (`QueryOptions`) with options for limit, offset, etc.
+
+Queries can also be passed additional options, these include;
 
 | name | Default | Description |
 | ---- | ----------- | ---- |
@@ -100,9 +227,43 @@ Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additio
 | limit | 1000 | Limit the number of returned documents to x |
 | order | 'ASC' | The order of the returned results, can be ASC (ascending) or DESC (descending)
 
-### Model methods
+```ts
+// Query for all documents where the fullName column contains a substring of 'bob' AND the age is greater than or equal to 19 - but only return one result
+qry = {
+    where: {
+        fullName: 'bob', age: {$gte: 19}
+    },
+    limit: 1
+}
 
-#### Instance methods
+// Query for all documents where the score is les than 50.56, and use the limit and offset options to enable paging
+qry = {
+    where: {
+        score: {$lt: 50.56}
+    },
+    limit: 10, // 10 results per "page"
+    offset: 20 // skip the first 2 "pages"
+}
+```
+
+### TypeScript Type
+
+
+```ts
+type QueryOptions = {
+    where?: Query;
+    order?: 'ASC' | 'DESC';
+    limit?: number;
+    offset?: number;
+    scores?: boolean;
+};
+
+```
+
+
+# Model methods
+
+## Instance methods
 
 | name | Description |
 | ---- | ----------- |
@@ -111,7 +272,7 @@ Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additio
 | remove() | Delete this document |
 | save() | Save this document to S3 |
 
-#### Static methods
+## Static methods
 
 | name | Description |
 | ---- | ----------- |
@@ -128,78 +289,18 @@ Queries (`find`, `findOne`, `getIds`, `count`, `distinct`) can be passed additio
 | generateMock() | Generate random test data that matches the model schema |
 
 
-### Storm methods
+# Storm methods
 
-#### Instance methods
+## Instance methods
 
 | name | Description |
 | ---- | ----------- |
-| constructor(config) | Create a new instance of the s3 ORM ("storm"), passing in config options |
-| define(name, schema, options)) | A factory method to create and register a model class |
+| connect(config) | Create a new instance of the s3 ORM ("storm"), passing in config options |
 | listModels() | Give a list of all the models currently registered |
 
-## Basic usage
-
-```js
-
-const {Storm, DataTypes} = require('s3-orm');
-
-// You can use in a read-only way with an anonymouse user (useful for browsers)
-const config = {
-    prefix: 's3orm/',
-    bucket: 'test-assets'
-};
-
-// OR, for server-side you can use the AWS S3 credentials for full read/write access
-const config = {
-    prefix: 's3orm/',
-    bucket: process.env.AWS_BUCKET,
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-};
-
-// Create an instance of the storm ORM with this engine
-const storm = new Storm(config);
-
-// Create a schema
-const schema =  {
-    email: {type: DataTypes.String, unique: true},
-    age: {type: DataTypes.Integer, index: true},
-    score: {type: DataTypes.Float, index: true},
-    fullName: {type: DataTypes.String, index: true},
-    lastIp: DataTypes.String,
-    lastLogin: {type: DataTypes.Date, index: true},  
-    preferences: DataTypes.Json, 
-    tags: DataTypes.Array, 
-    level: { type: DataTypes.String, default: 'user', index: true },
-    status: { type: DataTypes.String, default: 'active' }
-}
-
-// Use the factory method to create the Person class using 
-// this schema and any options you want to set
-const Person = storm.define('person', schema, {expires: 100});
-
-// You can use the generateMock method to create random data for testing
-let pete = new Model();
-pete.fullName = 'Pete The Cat';
-pete.age = 12;
-
-// Save this instance to S3 (or whatever back-end engine you are using)
-await pete.save();
-
-// You can also use the generateMock method to create random data for testing
-let randomData = Model.generateMock();
-let rando = new Person(randomData);
-await rando.save();
-
-// Examples of some basic queries
-let people = await Person.find({age: {$gte: 12}});
-let people = await Person.find({fullName: 'Cat'});
 
 
-```
-
-## S3 Setup
+# S3 Setup
 
 If you intend to enable public reads, then you'll need to set the bucket policy and CORS correctly. **NOTE** to enable directory listing you'll need to add both the bucket and the bucket with the trailing `/*` into the resource section.
 
@@ -249,8 +350,10 @@ And for CORS;
 ]
 ```
 
-## Roadmap
+# Roadmap
 
 * Expires index
 * Versioning
 * Indexing arrays and json object
+* Test speed as indicies increase in size
+* Sharding
