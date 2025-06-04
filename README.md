@@ -1,4 +1,4 @@
-# The ORM for AWS S3!
+# Stash, the ORM for AWS S3!
 
 This is a simple object relation model (ORM) that uses S3 as it's storage engine. So why the heck would you want that? End of the day, you should probably use a database. But.... S3 is just a giant key-value store, which means this is possible. So why not?
 
@@ -19,9 +19,9 @@ npm install s3-orm
 
 ```ts
 
-const {Storm, Entity, Column} = require('s3-orm');
+const {Stash, Entity, Column} = require('s3-orm');
 
-Storm.connect({
+Stash.connect({
     bucket: process.env.AWS_BUCKET,
     prefix: 's3orm/',
     region: process.env.AWS_REGION,
@@ -31,8 +31,8 @@ Storm.connect({
 });
 
 
-// Create an instance of the storm ORM with this engine
-const storm = new Storm(config);
+// Create an instance of the s3tash ORM with this engine
+const s3tash = new Stash(config);
 
 // Create a schema
 @Entity()
@@ -290,13 +290,13 @@ type QueryOptions = {
 | generateMock() | Generate random test data that matches the model schema |
 
 
-# Storm methods
+# Stash methods
 
 ## Instance methods
 
 | name | Description |
 | ---- | ----------- |
-| connect(config) | Create a new instance of the s3 ORM ("storm"), passing in config options |
+| connect(config) | Create a new instance of the s3 ORM ("s3tash"), passing in config options |
 | listModels() | Give a list of all the models currently registered |
 
 

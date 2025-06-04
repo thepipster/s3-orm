@@ -1,5 +1,5 @@
 import {type ColumnParams} from "../types";
-import { Storm } from "../core/Storm";
+import { Stash } from "../core/Stash";
 import Logger from "../utils/Logger";
 import {cyan, blue} from "colorette";
 import {type callback, type EntityParams} from "../types";
@@ -97,7 +97,7 @@ export class ModelMetaStore {
         const col:ModelSchema = this.store.get(modelName);
         col[meta.name] = meta;
 
-        if (Storm.debug){
+        if (Stash.debug){
             //col.forEach(function(fieldInfo: ColumnSchema, name: string){
             //    Logger.debug(`[${cyan(modelName)}] ${blue(name)}`, fieldInfo);        
             //});    

@@ -1,13 +1,13 @@
 import Chance from "chance";
 import {Profiler} from "../utils/Profiler";
 import _ from "lodash";
-import {Column, Entity, Model, Query, Storm} from "../index";
+import {Column, Entity, Model, Query, Stash} from "../index";
 import Logger from "../utils/Logger";
 import { NumericIndex } from "../indexing/NumericIndex";
 
 async function main() {
 
-    Storm.connect({
+    Stash.connect({
         bucket: process.env.AWS_BUCKET,
         prefix: process.env.AWS_ROOT_FOLDER,
         region: process.env.AWS_REGION,

@@ -7,7 +7,7 @@ import {
     GetObjectCommandOutput,
     PutObjectCommandOutput
 } from "@aws-sdk/client-s3";
-import {Storm} from "../core/Storm";
+import {Stash} from "../core/Stash";
 import Chance from "chance";
 import {Profiler} from "../utils/Profiler";
 
@@ -122,7 +122,7 @@ class S3BinaryTreeManager {
         initialMinRange: number | null = null,
         initialMaxRange: number | null = null
     ) {
-        this.bucketName =  Storm.aws().opts.bucket;
+        this.bucketName =  Stash.aws().opts.bucket;
         this.basePrefix = basePrefix;
         this.suffix = suffix;
         this.paddingDigits = paddingDigits;
@@ -136,7 +136,7 @@ class S3BinaryTreeManager {
         this.rangeInitialized = initialMinRange !== null && initialMaxRange !== null;
 
         // Initialize S3 client
-        this.s3Client =  Storm.aws().s3;
+        this.s3Client =  Stash.aws().s3;
 
         // Root node of the binary tree
         this.rootNodeKey = `${this.basePrefix}_tree/root.json`;
@@ -892,7 +892,7 @@ class S3BinaryTreeManager {
 async function main() {
     try {
 
-        Storm.connect({
+        Stash.connect({
             bucket: process.env.AWS_BUCKET,
             prefix: process.env.AWS_ROOT_FOLDER,
             region: process.env.AWS_REGION,

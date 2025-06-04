@@ -3,7 +3,7 @@ import {type ColumnParams} from "../types";
 import {Model} from "../core/Model";
 import Logger from "../utils/Logger";
 import {cyan, blue} from "colorette";
-import { Storm } from "../core/Storm";
+import { Stash } from "../core/Stash";
 import {type ColumnSchema, ModelMetaStore} from "./ModelMetaStore";
 
 import {JsonType} from "../columns/JsonType";

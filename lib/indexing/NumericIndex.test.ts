@@ -1,9 +1,9 @@
 import { NumericIndex } from '../../lib/indexing/NumericIndex';
-import { Column, Storm, Entity, Model } from "../../lib";
+import { Column, Stash, Entity, Model } from "../../lib";
 import {ModelMetaStore} from "../../lib/decorators/ModelMetaStore";
 import Logger from '../../lib/utils/Logger';
 
-Storm.connect({
+Stash.connect({
     bucket: process.env.AWS_BUCKET,
     prefix: process.env.AWS_TEST_ROOT_FOLDER,
     region: process.env.AWS_REGION,
@@ -36,7 +36,7 @@ describe('NumericIndex', () => {
             const defn = ModelMetaStore.getColumn('TestIndexModel', 'aNumber');
             
             let key = `${orderedSet._getPrefix('aNumber', 100, defn)}###1`;
-            const result = await Storm.aws().get(key);
+            const result = await Stash.aws().get(key);
             expect(result).toHaveLength(1);
             //expect(result[0].value).toBe(100);
         });

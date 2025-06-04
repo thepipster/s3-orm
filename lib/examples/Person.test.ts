@@ -1,12 +1,12 @@
 import {Person} from './Person';
 import {people} from './test-data';
-import {Storm} from '../index';
+import {Stash} from '../index';
 import Logger from '../utils/Logger';
 import _ from 'lodash';
 
 let testPeople:Person[] = [];
 
-Storm.connect({
+Stash.connect({
     bucket: process.env.AWS_BUCKET,
     prefix: process.env.AWS_ROOT_FOLDER,
     region: process.env.AWS_REGION,

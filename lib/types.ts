@@ -1,3 +1,24 @@
+
+export type ConfigOptions = {
+    bucket: string,
+    prefix?: string,
+    region?: string,
+    rootUrl?: string,
+    accessKeyId: string,
+    secretAccessKey: string,
+    indexingEngine?: string,
+}
+
+export const StashDefaultConfig: ConfigOptions = {
+    bucket: '',
+    prefix: '',
+    region: 'us-east-1',
+    rootUrl: 's3orm/',
+    accessKeyId: '',
+    secretAccessKey: '',
+    indexingEngine: 'basic',
+}
+
 export type ColumnParams = {
     type?:  string, // 'boolean' | 'text' | 'date' | 'integer' | 'float' | 'json' | 'array';
     index?: boolean;

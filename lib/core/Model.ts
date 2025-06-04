@@ -3,8 +3,8 @@ import {isUndefined, uniq, map, isEmpty, intersection, slice} from "lodash";
 import {Promise} from "bluebird";
 import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
 import QueryError from "../errors/QueryError";
-import Indexing from "./Indexing";
-import {Storm} from "./Storm";
+import {Indexing} from "./Indexing";
+import {Stash} from "./Stash";
 import {cyan, blue, green, gray} from "colorette";
 import {Op, Query, QueryOptions, type KeyValObject} from "../types";
 import { ModelMetaStore, type ColumnSchema, type ModelSchema } from "../decorators/ModelMetaStore";
@@ -12,7 +12,7 @@ import { ModelMetaStore, type ColumnSchema, type ModelSchema } from "../decorato
 const debugMode = true;
 
 export class Model {
-    
+
     id: number = 0;
     __v: number = 1;
     //__schema: ModelSchema;
@@ -60,7 +60,7 @@ export class Model {
                         this[key] = null;
                     }
     
-                    if (Storm.debug) {
+                    if (Stash.debug) {
                         Logger.debug(`[${this.constructor.name}.constructor] ${cyan(key)} of type ${blue(defn.name)} = ${green(data[key])} (${typeof data[key]})`);
                     }
     
@@ -135,7 +135,7 @@ export class Model {
      */
     static async exists(id: number) {
         const modelName = this._name();        
-        return await Storm.s3().hasObject(`${modelName}/${id}`);
+        return await Stash.s3().hasObject(`${modelName}/${id}`);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -146,7 +146,7 @@ export class Model {
         if (!model.isNumeric){
             throw new QueryError(`${modelName}.${fieldName} is not numeric!`);
         }
-        const zmax = await Storm.s3().zGetMax(`${modelName}/${fieldName}`, true);
+        const zmax = await Stash.s3().zGetMax(`${modelName}/${fieldName}`, true);
         return (model.type == 'float') ? parseFloat(zmax.score) : parseInt(zmax.score, 10);
     }
 
@@ -158,7 +158,7 @@ export class Model {
         if (!model.isNumeric){
             throw new QueryError(`${modelName}.${fieldName} is not numeric!`);
         }
-        const zmax = await Storm.s3().zGetMin(`${modelName}/${fieldName}`, true);
+        const zmax = await Stash.s3().zGetMin(`${modelName}/${fieldName}`, true);
         return (model.type == 'float') ? parseFloat(zmax.score) : parseInt(zmax.score, 10);
     }
 
@@ -215,7 +215,7 @@ export class Model {
         }
         
         // Remove data
-        await Storm.s3().delObject(`${modelName}/${this.id}`);
+        await Stash.s3().delObject(`${modelName}/${this.id}`);
 
     }
 
@@ -247,7 +247,7 @@ export class Model {
 
         const modelName = this.constructor.name;
         const model: ModelSchema = ModelMetaStore.get(modelName);
-        const s3 = Storm.s3();
+        const s3 = Stash.s3();
         const indx = new Indexing(this.id, modelName);
         var oldValues = {};
 
@@ -397,7 +397,7 @@ export class Model {
 
             //Logger.debug(`[${this._name()}] Loading from id ${id}, key = ${key}`);
 
-            const data = await Storm.s3().getObject(key);
+            const data = await Stash.s3().getObject(key);
 
             //Logger.debug(`[${this._name()}] Loaded`, data);
 
@@ -553,11 +553,11 @@ export class Model {
         // Deal with the special case of an empty query, which means return everything!
         if (isEmpty(query.where)){
 
-            const list = await Storm.s3().listObjects(modelName);
+            const list = await Stash.s3().listObjects(modelName);
             
             for (let i=0; i<list.length; i+=1){
                 let key = list[i];
-                let data = await Storm.s3().getObject(key);
+                let data = await Stash.s3().getObject(key);
                 results.push(data.id);
             }
                 

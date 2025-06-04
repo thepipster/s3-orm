@@ -4,9 +4,9 @@ import { Model } from '../core/Model';
 import { ModelMetaStore } from './ModelMetaStore';
 import { type ColumnSchema } from './ModelMetaStore';
 
-// Mock Storm for Model class
-jest.mock('../core/Storm', () => ({
-    Storm: {
+// Mock Stash for Model class
+jest.mock('../core/Stash', () => ({
+    Stash: {
         debug: false,
         s3: jest.fn().mockReturnValue({
             hasObject: jest.fn().mockResolvedValue(true),

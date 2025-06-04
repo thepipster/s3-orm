@@ -1,26 +1,30 @@
-import Logger from "../utils/Logger";
 import _ from "lodash";
 import Chance from "chance";
-import {Column, Entity, Model, Query, Storm} from "../index";
+import {Logger, Column, Entity, Model, Query, Stash} from "../index";
 import {Profiler} from "../utils/Profiler";
 import {people} from "./test-data";
 import {Person} from "./Person";
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
 const chance = new Chance();
 
-Storm.connect({
+Stash.connect({
     bucket: process.env.AWS_BUCKET,
     prefix: process.env.AWS_ROOT_FOLDER,
     region: process.env.AWS_REGION,
     rootUrl: process.env.AWS_CLOUDFRONT_URL,
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_ACCESS_SECRET,
+    indexingEngine: 'basic',
 });
 
 
 // uuid: { type: DataTypes.String, default: uuidv4}, 
 
 // Pass in the engine, this allows swapping out the back-end DB 
-//const storm = new Storm();
+//const storm = new Stash();
 
 setTimeout( async ()=> {
 

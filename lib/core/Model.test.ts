@@ -2,13 +2,13 @@
 
 import Logger from "../../lib/utils/Logger";
 import Chance from "chance";
-import { Column, Storm, Entity, Model } from "../../lib";
+import { Column, Stash, Entity, Model } from "../../lib";
 import {uniq, map} from "lodash";
 
 const chance = new Chance();
 
-const storm = new Storm();
-Storm.connect({
+const storm = new Stash();
+Stash.connect({
     bucket: process.env.AWS_BUCKET,
     prefix: process.env.AWS_TEST_ROOT_FOLDER,
     region: process.env.AWS_REGION,

@@ -1,6 +1,6 @@
 import Logger from "../utils/Logger";
 import { EngineHelpers } from "./EngineHelpers";
-import { Storm } from "./Storm";
+import { Stash } from "./Stash";
 import { ModelMetaStore, type ColumnSchema, type ModelSchema } from "../decorators/ModelMetaStore";
 import {
     isNull,
@@ -14,7 +14,7 @@ import {Promise} from "bluebird";
 import {Query} from "../types";
 import UniqueKeyViolationError from "../errors/UniqueKeyViolationError";
 
-class Indexing {
+export class Indexing {
 
     id: number = 0;
     schema: ModelSchema = {};
@@ -79,9 +79,9 @@ class Indexing {
         const fieldDef: ColumnSchema = this._checkKey(fieldName);                
         val = fieldDef.encode(val);
 
-        const key = Indexing.getIndexName(this.modelName, fieldName);
+        const key = this.getIndexName(this.modelName, fieldName);
 
-        let alreadyExistsId = await Storm.s3().setIsMember(key, val);
+        let alreadyExistsId = await Stash.s3().setIsMember(key, val);
 
         // Throw error if this val already exists in the set
         if (alreadyExistsId) {
@@ -96,14 +96,14 @@ class Indexing {
 
     async clearUniques(fieldName: string){
         this._checkKey(fieldName);
-        return await Storm.s3().setClear(Indexing.getIndexName(this.modelName, fieldName));
+        return await Stash.s3().setClear(this.getIndexName(this.modelName, fieldName));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async getUniques(fieldName: string){
         this._checkKey(fieldName);
-        return await Storm.s3().setMembers(Indexing.getIndexName(this.modelName, fieldName));
+        return await Stash.s3().setMembers(this.getIndexName(this.modelName, fieldName));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -111,7 +111,7 @@ class Indexing {
     async removeUnique(fieldName, val){
         const fieldDef: ColumnSchema = this._checkKey(fieldName);
         val = fieldDef.encode(val);
-        await Storm.s3().setRemove(Indexing.getIndexName(this.modelName, fieldName), val);
+        await Stash.s3().setRemove(this.getIndexName(this.modelName, fieldName), val);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -125,9 +125,9 @@ class Indexing {
         const fieldDef: ColumnSchema = this._checkKey(fieldName);
 
         val = fieldDef.encode(val); 
-        const key = Indexing.getIndexName(this.modelName, fieldName);
+        const key = this.getIndexName(this.modelName, fieldName);
 
-        let alreadyExistsId = await Storm.s3().setIsMember(key, val);
+        let alreadyExistsId = await Stash.s3().setIsMember(key, val);
 
         // Throw error if this val already exists in the set
         if (alreadyExistsId) {
@@ -135,7 +135,7 @@ class Indexing {
         }
 
         //return await this.add(fieldName, val);
-        await Storm.s3().setAdd(Indexing.getIndexName(this.modelName, fieldName), val);
+        await Stash.s3().setAdd(this.getIndexName(this.modelName, fieldName), val);
         return
     }
     
@@ -153,8 +153,8 @@ class Indexing {
         }       
         const fieldDef: ColumnSchema = this._checkKey(fieldName); 
         val = fieldDef.encode(val);
-        const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
-        await Storm.s3().del(key);  
+        const key = `${this.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
+        await Stash.s3().del(key);  
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -170,8 +170,8 @@ class Indexing {
         }        
         const fieldDef: ColumnSchema = this._checkKey(fieldName);        
         val = fieldDef.encode(val);
-        const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
-        await Storm.s3().set(key, val);  
+        const key = `${this.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
+        await Stash.s3().set(key, val);  
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -183,7 +183,7 @@ class Indexing {
      */
     async list(fieldName){                        
         const fieldDef: ColumnSchema = this._checkKey(fieldName);
-        let res = await Storm.s3().list(Indexing.getIndexName(this.modelName, fieldName));
+        let res = await Stash.s3().list(this.getIndexName(this.modelName, fieldName));
         return map(res, (item)=>{
             let parts = item.split('###');
             const decodedValue = EngineHelpers.decode(parts[0]);
@@ -202,7 +202,7 @@ class Indexing {
      * @param {*} fieldName 
      * @returns Number of items removed
      */
-    async clear(fieldName){
+    async clear(fieldName): Promise<number> {
 
         const fieldDef: ColumnSchema = this._checkKey(fieldName);     
         let deleteBatch = [];
@@ -210,11 +210,11 @@ class Indexing {
                 
         for (let i=0; i<res.length; i+=1){             
             let item = res[i];
-            let key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(item.val)}###${item.id}`;
+            let key = `${this.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(item.val)}###${item.id}`;
             deleteBatch.push(key);            
         }
 
-        await Storm.s3().delBatch(deleteBatch);
+        await Stash.s3().delBatch(deleteBatch);
 
     }
 
@@ -269,14 +269,14 @@ class Indexing {
 
     async getNumerics(fieldName){
         this._checkKey(fieldName);
-        return await Storm.s3().zSetMembers(Indexing.getIndexName(this.modelName, fieldName), true);
+        return await Stash.s3().zSetMembers(this.getIndexName(this.modelName, fieldName), true);
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async clearNumerics(fieldName){
         this._checkKey(fieldName);
-        return await Storm.s3().zSetClear(Indexing.getIndexName(this.modelName, fieldName));
+        return await Stash.s3().zSetClear(this.getIndexName(this.modelName, fieldName));
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +292,7 @@ class Indexing {
             throw new Error(`Invalid numeric value for field ${fieldName}: ${val}`);
         }
         try {
-            await Storm.s3().zSetAdd(Indexing.getIndexName(this.modelName, fieldName), numericVal, this.id.toString());
+            await Stash.s3().zSetAdd(this.getIndexName(this.modelName, fieldName), numericVal, this.id.toString());
         }
         catch(err){
             Logger.error(err);
@@ -312,7 +312,7 @@ class Indexing {
             throw new Error(`Invalid numeric value for field ${fieldName}: ${val}`);
         }
         try {
-            await Storm.s3().zSetRemove(Indexing.getIndexName(this.modelName, fieldName), numericVal, this.id.toString());
+            await Stash.s3().zSetRemove(this.getIndexName(this.modelName, fieldName), numericVal, this.id.toString());
         }
         catch(err){
             Logger.error(err.encode());
@@ -330,7 +330,7 @@ class Indexing {
      */
     async searchNumeric(fieldName: string, query: Query){
         this._checkKey(fieldName);
-        let res = await Storm.s3().zRange(Indexing.getIndexName(this.modelName, fieldName), query);
+        let res = await Stash.s3().zRange(this.getIndexName(this.modelName, fieldName), query);
         if (!res){
             return [];
         }
@@ -341,8 +341,11 @@ class Indexing {
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
-    static getIndexName(modelName: string, fieldName: string){
-        return `${modelName}/${fieldName}`;
+    getIndexName(modelName: string, fieldName: string = null){
+        if (fieldName){
+            return `${modelName}/${fieldName}`;
+        }
+        return `${modelName}`;
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -350,17 +353,16 @@ class Indexing {
     /**
      * As tracking the last id used for models is used a lot (when we create a new model instance)
      * it makes sense to cache id's as a special case
-     * @param {*} modelName 
      */
     async setMaxId(id: number){
-        await Storm.s3().set(`${this.modelName}/maxid`, id+'');
+        await Stash.s3().set(`${this.getIndexName(this.modelName)}/maxid`, id+'');
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
 
     async getMaxId(){
         try {
-            let val = await Storm.s3().get(`${this.modelName}/maxid`);
+            let val = await Stash.s3().get(`${this.getIndexName(this.modelName)}/maxid`);
             let no = parseInt(val)
             //Logger.debug(`getMaxId() = Read ${val}, parsed = ${no}, isNumber(no) = ${isNumber(no)}, isFinite(no) = ${isFinite(no)}`);
             if (!isNumber(no) || !isFinite(no)){
@@ -503,11 +505,11 @@ class Indexing {
     async cleanIndices() {
 
         // List all objects from their hashes
-        let keys = await Storm.s3().listObjects(this.modelName);
+        let keys = await Stash.s3().listObjects(this.modelName);
 
         // Clean all the indexes for this  model
-        await Storm.s3().zSetClear(this.modelName);
-        await Storm.s3().setClear(this.modelName);
+        await Stash.s3().zSetClear(this.modelName);
+        await Stash.s3().setClear(this.modelName);
 
         // Get basic indexes
         let fieldNames = Object.keys(this.schema);
@@ -520,26 +522,26 @@ class Indexing {
             //Logger.debug(`Deleting ${key} (${i+1} of ${keys.length})`);
 
             await Promise.map(fieldNames, async (fieldName) => {
-                let res = await Storm.s3().list(Indexing.getIndexName(this.modelName, fieldName));
+                let res = await Stash.s3().list(this.getIndexName(this.modelName, fieldName));
                 for (let k=0; k<res.length; k+=1){
                     const item = res[k];
-                    const dkey = `${Indexing.getIndexName(this.modelName, fieldName)}/${item}`;
+                    const dkey = `${this.getIndexName(this.modelName, fieldName)}/${item}`;
                     deleteBatch.push(dkey);
                 }
             }, {concurrency: 10});
 
         }
 
-        await Storm.s3().delBatch(deleteBatch);
+        await Stash.s3().delBatch(deleteBatch);
 
 
         // TODO: Explore, to make faster...
-        // Storm.s3().aws.deleteAll(items);
+        // Stash.s3().aws.deleteAll(items);
         let maxId = -9999;
 
         await Promise.map(keys, async (key) => {                    
             
-            let data = await Storm.s3().getObject(key);
+            let data = await Stash.s3().getObject(key);
             
             if (data.id > maxId){
                 maxId = data.id;
@@ -567,9 +569,9 @@ class Indexing {
      */
      async addExpires(expireTime: number){
         let expires = Math.round(Date.now() / 1000) + expireTime;
-        await Storm.s3().zSetAdd(`${this.modelName}/expires`, expires, this.id+'', this.id+'');
+        await Stash.s3().zSetAdd(`${this.getIndexName(this.modelName)}/expires`, expires, this.id+'', this.id+'');
     }
     
     // ///////////////////////////////////////////////////////////////////////////////////////
 }
-export default Indexing;
+

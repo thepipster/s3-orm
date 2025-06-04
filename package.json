@@ -1,7 +1,7 @@
 {
   "name": "s3-orm",
   "version": "2.0.0",
-  "description": "S3 ORM",
+  "description": "Object-Relational Mapping (ORM) interface for Amazon S3, enabling model-based data operations with indexing and querying capabilities",
   "main": "dist/s3orm.ts",
   "author": "Mike Pritchard",
   "license": "MIT",
@@ -67,6 +67,40 @@
     "orm",
     "db",
     "database",
-    "query"
-  ]
+    "query",
+    "aws",
+    "nosql",
+    "indexing",
+    "typescript"
+  ],
+  "projectInfo": {
+    "structure": {
+      "core": {
+        "description": "Core functionality of the ORM",
+        "components": [
+          "BasicIndexing.ts: Implements IndexingEngine for managing indexes on model fields",
+          "Model.ts: Base class for data models with CRUD operations",
+          "AwsEngine.ts: Interface with AWS S3 for storage operations",
+          "Storm.ts: Factory for S3 connections",
+          "EngineHelpers.ts: Utility functions for the engine",
+          "types.ts: Type definitions for core functionality"
+        ]
+      },
+      "directories": [
+        "/lib/core/: Core functionality of the ORM",
+        "/lib/decorators/: Contains ModelMetaStore for schema definitions",
+        "/lib/errors/: Custom error types",
+        "/lib/utils/: Utility functions including Logger",
+        "/lib/types/: TypeScript type definitions"
+      ]
+    },
+    "features": [
+      "Model definition with schema",
+      "Indexing capabilities (unique, non-unique)",
+      "CRUD operations",
+      "Query capabilities",
+      "Set operations",
+      "Sorted set operations"
+    ]
+  }
 }

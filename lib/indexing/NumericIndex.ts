@@ -1,5 +1,5 @@
 import Logger from "../utils/Logger";
-import { Storm } from "../core/Storm";
+import { Stash } from "../core/Stash";
 import { ModelMetaStore, type ModelSchema, type ColumnSchema } from "../decorators/ModelMetaStore";
 import { ListObjectsV2Command, ListObjectsV2CommandOutput } from "@aws-sdk/client-s3";
 import {Promise} from "bluebird";
@@ -21,7 +21,7 @@ export class NumericIndex {
     constructor(modelName: string) {
         this.schema = ModelMetaStore.get(modelName);
         this.modelName = modelName;
-        this.indexRootPath = Storm.rootPath + "indexes/";
+        this.indexRootPath = Stash.rootPath + "indexes/";
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -49,10 +49,10 @@ export class NumericIndex {
         if (defn.unique){
             const results = await Promise.all({
                 // Check if the prefix is taken (i.e. this or another record has this value)
-                prefix: await Storm.aws().exists(newPrefix),
+                prefix: await Stash.aws().exists(newPrefix),
                 // Check if the prefix is taken, and with this id (i.e. this record exists, 
                 // but its from the same record)
-                key: await Storm.aws().exists(newKey)
+                key: await Stash.aws().exists(newKey)
             });
             if (results.prefix && !results.key){
                 throw new UniqueKeyViolationError(`${colName} = ${val} is unique, and already exists`);
@@ -62,14 +62,14 @@ export class NumericIndex {
         // Delete old index (if there is one)
         if (prevVal != undefined && prevVal != null) {
             const oldPrefix:string = this._getPrefix(colName, prevVal, defn);
-            await Storm.aws().delete(`${oldPrefix}###${id}`);
-            //await Storm.aws().delete(oldPrefix);
+            await Stash.aws().delete(`${oldPrefix}###${id}`);
+            //await Stash.aws().delete(oldPrefix);
         }
 
-        // /await Storm.s3().get(`${this.getNodeKey(colName, prevVal)}`);
+        // /await Stash.s3().get(`${this.getNodeKey(colName, prevVal)}`);
         //Logger.debug(`Setting index at ${newKey}`);
 
-        await Storm.aws().uploadString(id.toString(), newKey);
+        await Stash.aws().uploadString(id.toString(), newKey);
 
     }
 
@@ -187,14 +187,14 @@ export class NumericIndex {
         let continuationToken = null;
 
         const params = {
-            Bucket: Storm.aws().opts.bucket,
+            Bucket: Stash.aws().opts.bucket,
             Delimiter: 's3orm/indexes/Person/score/',
             Prefix: startPrefix, // Start listing from the closest match
             MaxKeys: 1000,
             ContinuationToken: continuationToken
         };
 
-        const response = await Storm.aws().s3.send(new ListObjectsV2Command(params)) as ListObjectsV2CommandOutput;
+        const response = await Stash.aws().s3.send(new ListObjectsV2Command(params)) as ListObjectsV2CommandOutput;
 
         Logger.debug(response);
 
@@ -255,14 +255,14 @@ export class NumericIndex {
         while (isMore) { 
 
             const params = {
-                Bucket: Storm.aws().opts.bucket,
+                Bucket: Stash.aws().opts.bucket,
                 Prefix: startPrefix, // Start listing from the closest match
                 MaxKeys: 1000,
                 ContinuationToken: continuationToken,
             };
     
             Logger.debug(`Getting files with prefix ${startPrefix}`);
-            const response = await Storm.aws().s3.send(new ListObjectsV2Command(params)) as ListObjectsV2CommandOutput;
+            const response = await Stash.aws().s3.send(new ListObjectsV2Command(params)) as ListObjectsV2CommandOutput;
     
             //const response = await this._read(command) ;
             Logger.info(response.Contents)
@@ -339,7 +339,7 @@ export class NumericIndex {
  */
 async function main() {
 
-    Storm.connect({
+    Stash.connect({
         bucket: process.env.AWS_BUCKET,
         prefix: process.env.AWS_ROOT_FOLDER,
         region: process.env.AWS_REGION,

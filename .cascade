@@ -1,0 +1,116 @@
+{
+  "project": {
+    "name": "s3-orm",
+    "description": "Object-Relational Mapping (ORM) interface for Amazon S3, enabling model-based data operations with indexing and querying capabilities",
+    "language": "typescript",
+    "repository": "https://github.com/thepipster/s3-orm"
+  },
+  "structure": {
+    "core_components": [
+      {
+        "name": "BasicIndexing",
+        "path": "lib/core/BasicIndexing.ts",
+        "description": "Implements IndexingEngine for managing indexes on model fields"
+      },
+      {
+        "name": "Model",
+        "path": "lib/core/Model.ts",
+        "description": "Base class for data models with CRUD operations"
+      },
+      {
+        "name": "AwsEngine",
+        "path": "lib/core/AwsEngine.ts",
+        "description": "Interface with AWS S3 for storage operations"
+      },
+      {
+        "name": "Storm",
+        "path": "lib/core/Storm.ts",
+        "description": "Factory for S3 connections"
+      },
+      {
+        "name": "EngineHelpers",
+        "path": "lib/core/EngineHelpers.ts",
+        "description": "Utility functions for the engine"
+      },
+      {
+        "name": "types",
+        "path": "lib/core/types.ts",
+        "description": "Type definitions for core functionality"
+      }
+    ],
+    "directories": [
+      {
+        "path": "lib/core",
+        "description": "Core functionality of the ORM"
+      },
+      {
+        "path": "lib/decorators",
+        "description": "Contains ModelMetaStore for schema definitions"
+      },
+      {
+        "path": "lib/errors",
+        "description": "Custom error types"
+      },
+      {
+        "path": "lib/utils",
+        "description": "Utility functions including Logger"
+      },
+      {
+        "path": "lib/types",
+        "description": "TypeScript type definitions"
+      }
+    ]
+  },
+  "features": [
+    "Model definition with schema",
+    "Indexing capabilities (unique, non-unique)",
+    "CRUD operations",
+    "Query capabilities",
+    "Set operations",
+    "Sorted set operations"
+  ],
+  "testing": {
+    "framework": "jest",
+    "key_test_files": [
+      {
+        "name": "AwsEngine.test.ts",
+        "path": "lib/core/AwsEngine.test.ts",
+        "description": "Tests for AWS S3 interface operations"
+      },
+      {
+        "name": "BasicIndexing.test.ts",
+        "path": "lib/core/BasicIndexing.test.ts",
+        "description": "Tests for indexing operations"
+      },
+      {
+        "name": "Model.test.ts",
+        "path": "lib/core/Model.test.ts",
+        "description": "Tests for model CRUD operations"
+      }
+    ],
+    "coverage": [
+      "Object Operations (set, get, delete, check existence)",
+      "Set Operations (add, remove, check membership, clear)",
+      "Key-Value Operations (set, get, delete, batch delete)",
+      "Set Member Operations (get members, set intersection)",
+      "Sorted Set Operations (add/remove with scores, range queries)",
+      "Error handling"
+    ]
+  },
+  "recent_changes": [
+    {
+      "description": "Fixed file structure issue by moving files from /lib/core/indexing/ to /lib/core/",
+      "reason": "Resolved case-sensitivity problems in file paths",
+      "date": "2025-06-03"
+    },
+    {
+      "description": "Updated import paths in Model.ts",
+      "reason": "Reflect new file structure",
+      "date": "2025-06-03"
+    }
+  ],
+  "cascade": {
+    "version": "1.0.0",
+    "last_updated": "2025-06-03"
+  }
+}

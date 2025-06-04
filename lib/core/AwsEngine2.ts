@@ -5,18 +5,26 @@ import {S3Helper, type S3Options} from "../services/S3Helper";
 import {EngineHelpers} from "./EngineHelpers";
 import {Query, callback} from "../types";
 
-export class AwsEngine {
+type S3SetItem = {
+    setName: string;
+    val: string;
+    meta: string;
+}
+
+export class AwsEngine2 {
     
     aws: S3Helper;
 
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    setCache: Map<string, S3SetItem[]> = new Map();
+
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     constructor(opts?: S3Options){
         EngineHelpers.rootPath = (opts.prefix) ? opts.prefix : 's3orm/';
         this.aws = new S3Helper(opts);
     }
 
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     async getObjectTypes(path: string): Promise<string[]> {
         let res = await this.aws.list(EngineHelpers.getKey('hash'));
@@ -39,20 +47,20 @@ export class AwsEngine {
         await this.aws.uploadString(txt, EngineHelpers.getKey('hash', key));
     }
 
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     async getObject(key: string): Promise<any> {
         let res = await this.aws.get(EngineHelpers.getKey('hash', key));
         return JSON.parse(res);
     }
 
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     async delObject(key: string): Promise<void> {
          await this.aws.delete(EngineHelpers.getKey('hash', key));
     }
 
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     async hasObject(key: string): Promise<boolean> {
         return await this.aws.exists(EngineHelpers.getKey('hash', key));
@@ -75,7 +83,7 @@ export class AwsEngine {
         });
     }
 
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     async exists(key: string): Promise<boolean> {
         return await this.aws.exists(EngineHelpers.getKey('keyval', key));
@@ -135,7 +143,7 @@ export class AwsEngine {
     }
     
     
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * If your bucket is not set for public read access, you can call this to set ready 
@@ -145,7 +153,12 @@ export class AwsEngine {
     //    await this.aws.setFolderPublicRead('s3orm');
    // }
 
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
+
+    private async _loadSet(setName: string){
+        let data: S3SetItem[] = await this.getObject(EngineHelpers.getKey('set-hashes', setName));
+        this.setCache.set(setName, data);
+    }
 
     /**
      * Add a value into a unordered set
@@ -157,6 +170,12 @@ export class AwsEngine {
         //let res = await this.aws.getObjectACL(`${this.rootPath}sets/${setName}`);
         //Logger.warn(res);
         //await this.aws.setObjectACL(`${this.rootPath}sets/${setName}`, 'public-read');    
+        if (!this.setCache.has(setName)){
+            // We need to read this set into memory
+            await this._loadSet(setName);
+        }
+        
+        this.setCache.get(setName).push({setName, val, meta});
         await this.aws.uploadString(meta, EngineHelpers.getKey('sets', setName, val));
     }
 
@@ -172,13 +191,13 @@ export class AwsEngine {
         return await this.aws.get(EngineHelpers.getKey('sets', setName, val));
     }
 
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     async setRemove(setName: string, val: string): Promise<void> {
         await this.aws.delete(EngineHelpers.getKey('sets', setName, val));
     }
 
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Clear everything from a set
@@ -191,7 +210,7 @@ export class AwsEngine {
         }
     }    
 
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     async setIsMember(setName: string, val: string): Promise<boolean> {
         try {
@@ -203,7 +222,7 @@ export class AwsEngine {
         }
     }
     
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     async setMembers(setName: string): Promise<string[]> {        
         let res = await this.aws.list(EngineHelpers.getPath('sets', setName));
@@ -227,7 +246,7 @@ export class AwsEngine {
         return intersection(...items);
     }
     
-	// ///////////////////////////////////////////////////////////////////////////////////////
+    // ///////////////////////////////////////////////////////////////////////////////////////
 
     // zrevrangebyscore, zrangebyscore, zrem
 

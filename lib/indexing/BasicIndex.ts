@@ -1,5 +1,5 @@
 import Logger from "../utils/Logger";
-import { Storm } from "../core/Storm";
+import { Stash } from "../core/Stash";
 import { ModelMetaStore, type ModelSchema } from "../decorators/ModelMetaStore";
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 import {Promise} from "bluebird";
@@ -17,7 +17,7 @@ export class NumericIndex {
     constructor(modelName: string) {
         this.schema = ModelMetaStore.get(modelName);
         this.modelName = modelName;
-        this.indexRootPath = Storm.rootPath + "indexes/";
+        this.indexRootPath = Stash.rootPath + "indexes/";
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -28,16 +28,16 @@ export class NumericIndex {
         // Delete old index (if there is one)
         if (prevVal != undefined && prevVal != null) {
             const oldPrefix:string = this._getPrefix(colName, prevVal);
-            await Storm.aws().delete(`${oldPrefix}###${id}`);
+            await Stash.aws().delete(`${oldPrefix}###${id}`);
         }
 
         // Add new index
         const newPrefix:string = this._getPrefix(colName, val);
 
-        // /await Storm.s3().get(`${this.getNodeKey(colName, prevVal)}`);
+        // /await Stash.s3().get(`${this.getNodeKey(colName, prevVal)}`);
         Logger.debug(`Setting index at ${newPrefix}###${id}`);
 
-        await Storm.aws().uploadString(`${newPrefix}###${id}`, id.toString());
+        await Stash.aws().uploadString(`${newPrefix}###${id}`, id.toString());
 
         */
 
@@ -47,7 +47,7 @@ export class NumericIndex {
         const fieldDef: ColumnSchema = this._checkKey(fieldName);        
         val = fieldDef.encode(val);
         const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
-        await Storm.s3().set(key, val);          
+        await Stash.s3().set(key, val);          
 
     }
 
@@ -65,7 +65,7 @@ export class NumericIndex {
         const fieldDef: ColumnSchema = this._checkKey(fieldName); 
         val = fieldDef.encode(val);
         const key = `${Indexing.getIndexName(this.modelName, fieldName)}/${EngineHelpers.encode(val)}###${this.id}`;
-        await Storm.s3().del(key);  
+        await Stash.s3().del(key);  
     }
 
     // ///////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +77,7 @@ export class NumericIndex {
      */
     async list(fieldName){                        
         const fieldDef: ColumnSchema = this._checkKey(fieldName);
-        let res = await Storm.s3().list(Indexing.getIndexName(this.modelName, fieldName));
+        let res = await Stash.s3().list(Indexing.getIndexName(this.modelName, fieldName));
         return map(res, (item)=>{
             let parts = item.split('###');
             const decodedValue = EngineHelpers.decode(parts[0]);
@@ -108,7 +108,7 @@ export class NumericIndex {
             deleteBatch.push(key);            
         }
 
-        await Storm.s3().delBatch(deleteBatch);
+        await Stash.s3().delBatch(deleteBatch);
 
     }
     

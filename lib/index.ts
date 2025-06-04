@@ -1,9 +1,10 @@
 import {Model} from "./core/Model";
-import {Storm} from "./core/Storm";
+import {Stash} from "./core/Stash";
 import {Column} from "./decorators/Column";
 import {Entity} from "./decorators/Entity";
 
 import { type Query } from "./types";
+import Logger from "./utils/Logger";
 /*
 import IdType from './lib/types/IdType';
 import UuidType from'./lib/types/UuidType';
@@ -30,10 +31,11 @@ const DataTypes = {
 */
 // Names exports
 export {
+    Logger,
     Model,
     Column,
     Entity,
     Query,
-    Storm
+    Stash
 }   
  

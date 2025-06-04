@@ -1,28 +1,40 @@
 import Logger from "../utils/Logger";
 import {AwsEngine} from "./AwsEngine";
-import {S3Helper} from "../services/S3Helper";
-import {type S3Options} from "../services/S3Helper";
-import * as dotenv from 'dotenv';
+import {S3Helper, S3Options} from "../services/S3Helper";
+import {type ConfigOptions, StashDefaultConfig} from "../types";
 
-dotenv.config();
 
 /**
  * Connection class that manages the connection to the back-end storage engine
  * and provides access to the engine (for now only AWS supported, but other
  * S3 compatible engines could be added in the future)
  */
-export class Storm {
+export class Stash {
 
     static debug: boolean = false;
     static engine: AwsEngine;
-    static rootPath: string = "s3orm/";
+    static indexingEngine: string = 'basic';
+    static rootPath: string = "";
     private static _aws: S3Helper;
 
-    static connect(opts: any) {
+    static connect(opts: ConfigOptions) {
         //Logger.debug(`Connection.init()`);
-        this._aws = new S3Helper(opts);
-        this.engine = new AwsEngine(opts);
+
+        const s3Opts:S3Options = {
+            bucket: (opts.bucket) ? opts.bucket : StashDefaultConfig.bucket,
+            prefix: (opts.prefix) ? opts.prefix : StashDefaultConfig.prefix,
+            region: (opts.region) ? opts.region : StashDefaultConfig.region,
+            rootUrl: (opts.rootUrl) ? opts.rootUrl : StashDefaultConfig.rootUrl,
+            acl: 'private',
+            accessKeyId: (opts.accessKeyId) ? opts.accessKeyId : StashDefaultConfig.accessKeyId,
+            secretAccessKey: (opts.secretAccessKey) ? opts.secretAccessKey : StashDefaultConfig.secretAccessKey,
+        }
+
+        this._aws = new S3Helper(s3Opts);
+        this.engine = new AwsEngine(s3Opts);
+        this.indexingEngine = opts.indexingEngine || 'basic';
         this.rootPath = opts.prefix || '';
+        
         if (this.rootPath && this.rootPath.slice(-1) !== '/'){
             this.rootPath += '/';
         }
