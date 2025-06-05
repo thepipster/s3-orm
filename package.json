@@ -1,13 +1,11 @@
 {
   "name": "s3-orm",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Object-Relational Mapping (ORM) interface for Amazon S3, enabling model-based data operations with indexing and querying capabilities",
   "main": "dist/s3orm.ts",
   "author": "Mike Pritchard",
   "license": "MIT",
   "scripts": {
-    "dev2": "nodemon --exec babel-node lib/examples/basic-model.js",
-    "build2": "rollup --config",
     "compile": "tsc",
     "coverage": "jest --coverage",
     "dev": "ts-node-dev lib/index.ts",
