@@ -1,0 +1,1 @@
+{"version":3,"file":"QueryError.js","sourceRoot":"","sources":["../../../lib/errors/QueryError.ts"],"names":[],"mappings":";;AAAA;;;GAGG;AACF,MAAM,UAAW,SAAQ,KAAK;IAI3B,YAAY,GAAG,IAAI;QACf,KAAK,CAAC,GAAG,IAAI,CAAC,CAAA;QAHlB,SAAI,GAAW,GAAG,CAAC;QAIf,KAAK,CAAC,iBAAiB,CAAC,IAAI,EAAE,UAAU,CAAC,CAAA;IAC7C,CAAC;CACJ;AAED,kBAAe,UAAU,CAAC"}

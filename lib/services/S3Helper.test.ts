@@ -3,7 +3,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import { Readable } from 'stream';
 import { Readable as NodeReadable } from 'stream';
 import { sdkStreamMixin } from '@aws-sdk/util-stream-node';
-import S3Helper from '../../lib/services/S3Helper';
+import {S3Helper} from './S3Helper';
 import AuthError from '../../lib/errors/AuthError';
 
 const s3Mock = mockClient(S3Client);

@@ -32,6 +32,8 @@
         "./lib/**/*"
     ],
     "exclude": [
+        "./lib/experimental",
+        "./lib/scripts",
         "coverage",
         "keys",
         "node_modules",
