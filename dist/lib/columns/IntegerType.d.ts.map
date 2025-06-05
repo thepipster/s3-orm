@@ -1,0 +1,1 @@
+{"version":3,"file":"IntegerType.d.ts","sourceRoot":"","sources":["../../../lib/columns/IntegerType.ts"],"names":[],"mappings":"AAIA,qBAAa,WAAW;IAEpB,MAAM,CAAC,SAAS,EAAC,OAAO,CAAQ;IAChC,MAAM,CAAC,QAAQ,EAAC,MAAM,CAAa;IAEnC,MAAM,CAAC,IAAI;IAIX,MAAM,CAAC,MAAM,CAAC,GAAG,EAAE,GAAG,GAAG,MAAM;IAU/B,MAAM,CAAC,MAAM,CAAC,GAAG,EAAE,MAAM,GAAE,MAAM;CAepC"}

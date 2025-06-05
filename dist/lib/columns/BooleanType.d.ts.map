@@ -1,0 +1,1 @@
+{"version":3,"file":"BooleanType.d.ts","sourceRoot":"","sources":["../../../lib/columns/BooleanType.ts"],"names":[],"mappings":"AAIA,qBAAa,WAAW;IAEpB,MAAM,CAAC,SAAS,EAAC,OAAO,CAAS;IACjC,MAAM,CAAC,QAAQ,EAAC,MAAM,CAAa;IAEnC,MAAM,CAAC,IAAI;IAGX;;;;OAIG;IACH,MAAM,CAAC,MAAM,CAAC,GAAG,EAAE,GAAG,GAAG,MAAM;IAmB/B,MAAM,CAAC,MAAM,CAAC,GAAG,EAAE,MAAM;CAM5B;;AAED,wBAAkC"}

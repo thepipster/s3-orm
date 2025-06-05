@@ -1,0 +1,1 @@
+{"version":3,"file":"FloatType.d.ts","sourceRoot":"","sources":["../../../lib/columns/FloatType.ts"],"names":[],"mappings":"AAIA,qBAAa,SAAS;IAElB,MAAM,CAAC,SAAS,EAAC,OAAO,CAAQ;IAChC,MAAM,CAAC,QAAQ,EAAC,MAAM,CAAW;IAEjC,MAAM,CAAC,IAAI;IAIX,MAAM,CAAC,MAAM,CAAC,GAAG,EAAE,GAAG,GAAG,MAAM;IAU/B,MAAM,CAAC,MAAM,CAAC,GAAG,EAAE,MAAM,GAAE,MAAM;CAepC"}

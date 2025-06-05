@@ -17,6 +17,8 @@
         "sourceMap": true,
         // "strict": true, // we should consider setting this to true
         "target": "es6",
+        "declaration": true,
+        "declarationMap": true,
         "typeRoots": [
             "lib",
             "./node_modules/@types"

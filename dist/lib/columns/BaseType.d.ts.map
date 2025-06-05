@@ -1,0 +1,1 @@
+{"version":3,"file":"BaseType.d.ts","sourceRoot":"","sources":["../../../lib/columns/BaseType.ts"],"names":[],"mappings":"AAGA;;;;GAIG;AACH,qBAAa,QAAQ;IAEjB,MAAM,CAAC,SAAS,EAAC,OAAO,CAAS;IACjC,MAAM,CAAC,QAAQ,EAAC,MAAM,CAAU;IAEhC,MAAM,CAAC,IAAI;IAIX,MAAM,CAAC,MAAM,CAAC,GAAG,EAAE,GAAG,GAAG,MAAM;IAK/B,MAAM,CAAC,MAAM,CAAC,GAAG,EAAE,GAAG;CAGzB"}
