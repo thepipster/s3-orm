@@ -1,12 +1,14 @@
-# Stash, the ORM for AWS S3!
+# S3-ORM "S3tash", a Object Relation Model for AWS S3!
 
 This is a simple object relation model (ORM) that uses S3 as it's storage engine. So why the heck would you want that? End of the day, you should probably use a database. But.... S3 is just a giant key-value store, which means this is possible. So why not?
 
-So this is really just an experiment. But in situations where your data moves slowly, you're dealing with fairly basic queries and you need that massively scalable infrastructure that comes with S3, then this actually works pretty well.
+So this is really just an experiment. But in situations where your data moves slowly, you're dealing with fairly basic queries and you need that massively scalable infrastructure that comes with S3, then this actually works pretty well. It's also a fraction of the cost of using a relational database. 
 
 When I started building this, it was originally designed for a simple content management system (CMS). In that case, the website pulls content/data from JSON objects stored on S3 - with the static assets also stored on S3. This means the website will scale massively and is super cheap (i.e. no back-end infrastructure at all, and S3 is dirt cheap).
 
 So it's a crazy idea, but actually proved really useful - but in narrow use cases.
+
+**USE WITH CAUTION, THIS IS EXPERIMENTAL**
 
 ## Instalation and Usage
 
@@ -261,7 +263,7 @@ type QueryOptions = {
 ```
 
 
-# Model methods
+# **Model** methods
 
 ## Instance methods
 
@@ -290,15 +292,27 @@ type QueryOptions = {
 | generateMock() | Generate random test data that matches the model schema |
 
 
-# Stash methods
+# **Stash** methods
 
 ## Instance methods
 
 | name | Description |
 | ---- | ----------- |
-| connect(config) | Create a new instance of the s3 ORM ("s3tash"), passing in config options |
-| listModels() | Give a list of all the models currently registered |
+| connect(config) | Create a new instance of the s3 ORM ("s3tash"), passing in config options (type `ConfigOptions`) |
 
+## The configuration, `ConfigOptions`
+
+| name | Default | Description |
+| ---- | ---- | ----------- |
+| bucket | '' | The S3 bucket |
+| prefix | '' | Optional prefix for storing objects into S3 |
+| region | 'us-east-1' | The S3 AWS region |
+| rootUrl | 's3orm/' | The root path to use in your S3 bucket |
+| accessKeyId | '' | The AWS access key |
+| secretAccessKey | '' | The AWS secret key |
+| sessionToken | '' | The AWS session token, if needed, for temporary credentials  |
+| indexingEngine | 'basic' | Experimental, define the indexing engine to use |
+| s3Client | null | To cover more custom S3 setups, you can pass in the S3 (or S3 compatible) client |
 
 # S3 Setup
 
@@ -349,6 +363,21 @@ And for CORS;
     }
 ]
 ```
+
+## Contributing & Versioning
+
+We follow the semantic versioning convention, when you commit do so in the following manner;
+
+```
+git commit -m "fix: JIRA-1234 Fixed bug on foo"
+git commit -m "feat: JIRA-2345 Adds new Widget"
+git commit -m "chore: JIRA-3456 Updated README"
+git commit -m 'feat: JIRA-4567 Added new theme
+```
+
+We use [standard_version](https://github.com/conventional-changelog/standard-version) to automate versioning and release notes.
+
+Simply run `yarn run release` to bump the version number appropriately and generate release notes. Run `git push --follow-tags origin master` to publish.
 
 # Roadmap
 

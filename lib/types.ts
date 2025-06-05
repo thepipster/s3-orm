@@ -1,12 +1,15 @@
+import { S3Client } from "@aws-sdk/client-s3";
 
 export type ConfigOptions = {
-    bucket: string,
+    bucket?: string,
     prefix?: string,
     region?: string,
     rootUrl?: string,
-    accessKeyId: string,
-    secretAccessKey: string,
+    accessKeyId?: string,
+    secretAccessKey?: string,
+    sessionToken?: string; // Optional, for temporary credentials
     indexingEngine?: string,
+    s3Client?: S3Client
 }
 
 export const StashDefaultConfig: ConfigOptions = {
@@ -17,6 +20,8 @@ export const StashDefaultConfig: ConfigOptions = {
     accessKeyId: '',
     secretAccessKey: '',
     indexingEngine: 'basic',
+    s3Client: undefined,
+    sessionToken: undefined
 }
 
 export type ColumnParams = {

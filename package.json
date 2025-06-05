@@ -1,6 +1,6 @@
 {
   "name": "s3-orm",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Object-Relational Mapping (ORM) interface for Amazon S3, enabling model-based data operations with indexing and querying capabilities",
   "main": "dist/s3orm.ts",
   "author": "Mike Pritchard",

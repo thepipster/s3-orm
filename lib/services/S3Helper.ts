@@ -27,6 +27,7 @@ export type S3Options = {
     acl?: ObjectCannedACL;
     accessKeyId: string;
     secretAccessKey: string;
+    sessionToken?: string; // Optional, for temporary credentials
 }
 
 /**
@@ -43,38 +44,46 @@ export class S3Helper {
      * 
      * @param {*} opts {bucket,region,baseUrl,accessKeyId,secretAccessKey }
      */
-    constructor(opts: S3Options){
+    constructor(opts: S3Options | S3Client){
 
         if (!opts){
             throw new Error('You must pass configuration settings!');
         }
 
-        // Make sure we have the settings we need
-        if (!opts.bucket){
-            throw new Error('No AWS Bucket specified!')
+        // If we have an S3Client instance, use it directly
+        if (opts instanceof S3Client) {
+            this.s3 = opts;            
         }
+        else {
+            // Make sure we have the settings we need
+            if (!opts.bucket){
+                throw new Error('No AWS Bucket specified!')
+            }
 
-        opts.region = (opts.region) ? opts.region : "us-east-1";
-        opts.rootUrl = (opts.rootUrl) ? opts.rootUrl : `https://${opts.bucket}.s3.amazonaws.com`;
-        opts.acl = (opts && opts.acl) ? opts.acl as ObjectCannedACL : 'private';
-        
-        this.opts = opts;
-        this.authenticated = false;
+            opts.region = (opts.region) ? opts.region : "us-east-1";
+            opts.rootUrl = (opts.rootUrl) ? opts.rootUrl : `https://${opts.bucket}.s3.amazonaws.com`;
+            opts.acl = (opts && opts.acl) ? opts.acl as ObjectCannedACL : 'private';
+            
+            this.opts = opts;
+            this.authenticated = false;
 
-        const clientConfig: any = {
-            region: opts.region
-        };
-
-        // If we have the credentials, try to authenticate
-        if (opts.accessKeyId && opts.secretAccessKey){
-            clientConfig.credentials = {
-                accessKeyId: opts.accessKeyId,
-                secretAccessKey: opts.secretAccessKey
+            const clientConfig: any = {
+                region: opts.region
             };
-            this.authenticated = true;
+
+            // If we have the credentials, try to authenticate
+            if (opts.accessKeyId && opts.secretAccessKey){
+                clientConfig.credentials = {
+                    accessKeyId: opts.accessKeyId,
+                    secretAccessKey: opts.secretAccessKey,
+                    sessionToken: (opts.sessionToken) ? opts.sessionToken : null // Optional, for temporary credentials
+                };
+                this.authenticated = true;
+            }
+
+            this.s3 = new S3Client(clientConfig);
         }
 
-        this.s3 = new S3Client(clientConfig);
     }
 
     getBucket(): string { return this.opts.bucket }
