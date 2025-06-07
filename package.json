@@ -1,6 +1,6 @@
 {
   "name": "s3-orm",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Object-Relational Mapping (ORM) interface for Amazon S3, enabling model-based data operations with indexing and querying capabilities",
   "main": "dist/lib/index.js",
   "types": "dist/lib/index.d.ts",
