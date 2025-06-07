@@ -29,6 +29,7 @@ export type ColumnParams = {
     index?: boolean;
     unique?: boolean;
     default?: any;
+    enum?: string[] | object; // enum type or array of strings
     encode?: callback;
     decode?: callback;
 };

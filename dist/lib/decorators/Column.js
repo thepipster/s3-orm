@@ -17,6 +17,9 @@ function Column(params) {
         var t = Reflect.getMetadata("design:type", target, propertyKey);
         //console.log(`${propertyKey} type: ${t.name}`);
         const className = target.constructor.name;
+        if (!params) {
+            params = {};
+        }
         //Logger.debug(className, propertyKey, params);
         // Handle case where we have no type passed in
         // and we look up type from member variable type

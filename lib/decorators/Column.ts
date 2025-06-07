@@ -13,6 +13,7 @@ import {IntegerType} from "../columns/IntegerType";
 import {DateType} from "../columns/DateType";
 import {BooleanType} from "../columns/BooleanType";
 import {BaseType} from "../columns/BaseType";
+import {EnumType} from "../columns/EnumType";
 
 // any parameters, even optional ones!
 export function Column(params?: ColumnParams) 
@@ -25,6 +26,10 @@ export function Column(params?: ColumnParams)
 
         const className = target.constructor.name;
 
+        if (!params){
+            params = {};
+        }
+        
         //Logger.debug(className, propertyKey, params);
 
         // Handle case where we have no type passed in
@@ -35,7 +40,7 @@ export function Column(params?: ColumnParams)
         
         let isNumeric = false;
         if (type == 'number' || type == 'integer' || type == 'float' || type == 'date'){
-            isNumeric= true;
+            isNumeric = true;
         }
 
         const col:ColumnSchema = {

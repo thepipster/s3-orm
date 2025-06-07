@@ -16,6 +16,7 @@ export type ColumnParams = {
     index?: boolean;
     unique?: boolean;
     default?: any;
+    enum?: string[] | object;
     encode?: callback;
     decode?: callback;
 };

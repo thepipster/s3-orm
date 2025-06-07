@@ -2,7 +2,7 @@ import Logger from "../utils/Logger";
 import {AwsEngine} from "./AwsEngine";
 import {S3Helper, S3Options} from "../services/S3Helper";
 import {type ConfigOptions, StashDefaultConfig} from "../types";
-
+import { S3Client } from "@aws-sdk/client-s3";
 
 /**
  * Connection class that manages the connection to the back-end storage engine
@@ -25,13 +25,24 @@ export class Stash {
             prefix: (opts.prefix) ? opts.prefix : StashDefaultConfig.prefix,
             region: (opts.region) ? opts.region : StashDefaultConfig.region,
             rootUrl: (opts.rootUrl) ? opts.rootUrl : StashDefaultConfig.rootUrl,
+            sessionToken: (opts.sessionToken) ? opts.sessionToken : StashDefaultConfig.sessionToken,
+            //acl: (opts.acl) ? opts.acl : 'private',
             acl: 'private',
             accessKeyId: (opts.accessKeyId) ? opts.accessKeyId : StashDefaultConfig.accessKeyId,
             secretAccessKey: (opts.secretAccessKey) ? opts.secretAccessKey : StashDefaultConfig.secretAccessKey,
+        }        
+
+        if (opts.s3Client instanceof S3Client){
+            this._aws = new S3Helper(opts as S3Client);
+            this.engine = new AwsEngine(s3Opts);            
+        } 
+        else {
+            this._aws = new S3Helper(s3Opts);
+            this.engine = new AwsEngine(s3Opts);
+                        
         }
 
-        this._aws = new S3Helper(s3Opts);
-        this.engine = new AwsEngine(s3Opts);
+
         this.indexingEngine = opts.indexingEngine || 'basic';
         this.rootPath = opts.prefix || '';
         
